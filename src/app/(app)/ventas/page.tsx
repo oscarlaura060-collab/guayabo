@@ -37,7 +37,7 @@ export default async function VentasPage() {
           ) : undefined
         }
       />
-      <VentasTabla ventas={ventas ?? []} coloresEstado={coloresEstado} />
+      <VentasTabla ventas={ventas ?? []} coloresEstado={coloresEstado} esAdmin={rol === "ADMINISTRADOR"} />
     </>
   );
 }
