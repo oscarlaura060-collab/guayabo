@@ -6,15 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getSesion, rolDe } from "@/lib/auth";
 import { getListas } from "@/lib/listas";
 import { getConfig } from "@/lib/config";
-import { NuevaVentaFlujo } from "./NuevaVentaFlujo";
-import { crearVenta } from "../actions";
+import { NuevaVentaFlujo } from "../../ventas/nueva/NuevaVentaFlujo";
+import { crearPedido } from "../actions";
 
-export const metadata = { title: "Nueva venta" };
+export const metadata = { title: "Nuevo pedido" };
 
-export default async function NuevaVentaPage() {
+export default async function NuevoPedidoPage() {
   const sesion = await getSesion();
   const rol = rolDe(sesion);
-  if (rol !== "ADMINISTRADOR" && rol !== "VENDEDOR") redirect("/ventas");
+  if (rol !== "ADMINISTRADOR" && rol !== "VENDEDOR") redirect("/pedidos");
 
   const supabase = await createClient();
   const [{ data: clientes }, { data: prendas }, metodosLista, config] = await Promise.all([
@@ -28,21 +28,24 @@ export default async function NuevaVentaPage() {
     getConfig().catch(() => ({}) as Record<string, string>),
   ]);
 
+  const dias = Number(config.TIEMPO_ENTREGA) || 15;
+
   return (
     <>
-      <Link href="/ventas" className="mb-3 inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }}>
-        <ArrowLeft size={15} /> Ventas
+      <Link href="/pedidos" className="mb-3 inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }}>
+        <ArrowLeft size={15} /> Pedidos
       </Link>
-      <PageHeader titulo="Nueva venta" descripcion="Elige el cliente, agrega prendas y cobra." />
+      <PageHeader titulo="Nuevo pedido" descripcion="Pedido con fecha de entrega estimada." />
       <NuevaVentaFlujo
         clientes={clientes ?? []}
         prendas={prendas ?? []}
         metodos={(metodosLista ?? []).map((m) => m.nombre)}
         ventaBajoPedido={config.VENTA_BAJO_PEDIDO === "TRUE"}
         permitirStockNegativo={config.PERMITIR_STOCK_NEGATIVO === "TRUE"}
-        modo="VENTA"
-        registrar={crearVenta}
-        volverA="/ventas"
+        modo="PEDIDO"
+        diasEntrega={dias}
+        registrar={crearPedido}
+        volverA="/pedidos"
       />
     </>
   );

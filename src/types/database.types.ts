@@ -536,6 +536,11 @@ export type Database = {
           envio: number
           est_pago: string
           estado: string
+          fecha_envio: string | null
+          guia: string | null
+          notificado_envio: boolean
+          transportadora: string | null
+          url_rastreo: string | null
           extra: Json
           fecha: string
           fecha_entrega: string | null
@@ -561,6 +566,11 @@ export type Database = {
           envio?: number
           est_pago?: string
           estado?: string
+          fecha_envio?: string | null
+          guia?: string | null
+          notificado_envio?: boolean
+          transportadora?: string | null
+          url_rastreo?: string | null
           extra?: Json
           fecha?: string
           fecha_entrega?: string | null
@@ -586,6 +596,11 @@ export type Database = {
           envio?: number
           est_pago?: string
           estado?: string
+          fecha_envio?: string | null
+          guia?: string | null
+          notificado_envio?: boolean
+          transportadora?: string | null
+          url_rastreo?: string | null
           extra?: Json
           fecha?: string
           fecha_entrega?: string | null

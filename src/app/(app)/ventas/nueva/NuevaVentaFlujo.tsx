@@ -6,7 +6,7 @@ import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound } from "lucide-r
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { pesos } from "@/lib/format";
-import { crearVenta } from "../actions";
+import type { VentaInput, ResultadoVenta } from "../actions";
 
 export interface ClienteOpt {
   id: string;
@@ -37,21 +37,40 @@ interface CartItem {
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
 const inputStyle = { borderColor: "var(--borde-suave)" } as const;
 
+export type RegistrarFn = (
+  input: VentaInput & { tipo?: "VENTA" | "PEDIDO"; fecha_entrega?: string | null },
+) => Promise<ResultadoVenta>;
+
 export function NuevaVentaFlujo({
   clientes,
   prendas,
   metodos,
   ventaBajoPedido,
   permitirStockNegativo,
+  modo = "VENTA",
+  diasEntrega = 15,
+  registrar,
+  volverA = "/ventas",
 }: {
   clientes: ClienteOpt[];
   prendas: PrendaOpt[];
   metodos: string[];
   ventaBajoPedido: boolean;
   permitirStockNegativo: boolean;
+  modo?: "VENTA" | "PEDIDO";
+  diasEntrega?: number;
+  registrar: RegistrarFn;
+  volverA?: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
+
+  const fechaEntregaDefault = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (Number.isFinite(diasEntrega) ? diasEntrega : 15));
+    return d.toISOString().slice(0, 10);
+  })();
+  const [fechaEntrega, setFechaEntrega] = useState(modo === "PEDIDO" ? fechaEntregaDefault : "");
 
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [clienteQuery, setClienteQuery] = useState("");
@@ -130,7 +149,9 @@ export function NuevaVentaFlujo({
     if (valor > total && !confirm("El pago supera el total. ¿Continuar de todos modos?")) return;
 
     setEnviando(true);
-    const res = await crearVenta({
+    const res = await registrar({
+      tipo: modo,
+      fecha_entrega: modo === "PEDIDO" ? fechaEntrega || null : null,
       cliente_id: clienteId,
       cliente_nombre: clienteId ? null : clienteQuery.trim() || null,
       descuento: Number(descuento) || 0,
@@ -150,8 +171,8 @@ export function NuevaVentaFlujo({
     setEnviando(false);
 
     if (res.ok) {
-      toast(`Venta ${res.numero ?? ""} registrada`, "exito");
-      router.push("/ventas");
+      toast(`${modo === "PEDIDO" ? "Pedido" : "Venta"} ${res.numero ?? ""} registrado`, "exito");
+      router.push(volverA);
       router.refresh();
     } else {
       toast(res.error ?? "No se pudo registrar la venta", "error");
@@ -325,6 +346,20 @@ export function NuevaVentaFlujo({
 
       {/* Columna derecha: resumen + cobro */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
+        {modo === "PEDIDO" && (
+          <div className="gy-card p-4">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Fecha de entrega estimada
+              <input
+                className={inputCls}
+                style={inputStyle}
+                type="date"
+                value={fechaEntrega}
+                onChange={(e) => setFechaEntrega(e.target.value)}
+              />
+            </label>
+          </div>
+        )}
         <div className="gy-card p-4">
           <div className="mb-3 text-sm font-semibold">Resumen</div>
           <div className="flex flex-col gap-2 text-sm">
@@ -380,7 +415,7 @@ export function NuevaVentaFlujo({
 
           <div className="mt-4 flex flex-col gap-2">
             <Button onClick={() => guardar(true)} disabled={enviando || cart.length === 0} className="w-full">
-              {enviando ? "Registrando…" : `Cobrar ${pesos(total)}`}
+              {enviando ? "Registrando…" : modo === "PEDIDO" ? `Crear pedido · ${pesos(total)}` : `Cobrar ${pesos(total)}`}
             </Button>
             <Button variante="contorno" onClick={() => guardar(false)} disabled={enviando || cart.length === 0} className="w-full">
               Guardar con abono / sin pago
