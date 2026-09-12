@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Pencil, Trash2, Receipt } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Receipt, FileText, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fecha as fmtFecha, hoyBogota } from "@/lib/format";
-import { crearGasto, actualizarGasto, desactivarGasto } from "./actions";
+import { crearGasto, actualizarGasto, desactivarGasto, subirComprobanteGasto } from "./actions";
 
 export interface GastoRow {
   id: string;
@@ -18,6 +18,7 @@ export interface GastoRow {
   valor: number;
   metodo: string | null;
   observaciones: string | null;
+  comprobanteUrl: string | null;
 }
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
@@ -39,6 +40,7 @@ export function GastosManager({
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("");
   const [modal, setModal] = useState<{ abierto: boolean; gasto: GastoRow | null }>({ abierto: false, gasto: null });
+  const [subirEn, setSubirEn] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const lista = useMemo(() => {
@@ -67,9 +69,17 @@ export function GastosManager({
       toast(modal.gasto ? "Gasto actualizado" : "Gasto registrado", "exito");
       setModal({ abierto: false, gasto: null });
       router.refresh();
-    } else {
-      toast(res.error ?? "Error", "error");
-    }
+    } else toast(res.error ?? "Error", "error");
+  }
+
+  async function onSubir(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!subirEn) return;
+    setOcupado(true);
+    const res = await subirComprobanteGasto(subirEn, new FormData(e.currentTarget));
+    setOcupado(false);
+    if (res.ok) { toast("Comprobante subido", "exito"); setSubirEn(null); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
   }
 
   async function onBorrar(g: GastoRow) {
@@ -89,16 +99,8 @@ export function GastosManager({
           <b className="gy-cifra">{pesos(total)}</b>
         </div>
         {porCategoria.map(([c, v]) => (
-          <button
-            key={c}
-            className="gy-chip"
-            onClick={() => setFiltro(filtro === c ? "" : c)}
-            style={{
-              cursor: "pointer",
-              background: filtro === c ? "color-mix(in srgb, var(--color-secundario) 16%, transparent)" : "transparent",
-              borderColor: "var(--borde-suave)",
-            }}
-          >
+          <button key={c} className="gy-chip" onClick={() => setFiltro(filtro === c ? "" : c)}
+            style={{ cursor: "pointer", background: filtro === c ? "color-mix(in srgb, var(--color-secundario) 16%, transparent)" : "transparent", borderColor: "var(--borde-suave)" }}>
             {c}: {pesos(v)}
           </button>
         ))}
@@ -107,19 +109,10 @@ export function GastosManager({
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="relative flex min-w-56 flex-1 items-center">
           <Search size={16} className="pointer-events-none absolute left-3" style={{ color: "var(--tenue)" }} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar gasto…"
-            className="w-full rounded-full border bg-[var(--color-tarjeta)] py-2 pl-9 pr-3 text-sm outline-none"
-            style={{ borderColor: "var(--borde-suave)" }}
-          />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar gasto…"
+            className="w-full rounded-full border bg-[var(--color-tarjeta)] py-2 pl-9 pr-3 text-sm outline-none" style={{ borderColor: "var(--borde-suave)" }} />
         </label>
-        {puedeEscribir && (
-          <Button onClick={() => setModal({ abierto: true, gasto: null })}>
-            <Plus size={17} /> Nuevo gasto
-          </Button>
-        )}
+        {puedeEscribir && <Button onClick={() => setModal({ abierto: true, gasto: null })}><Plus size={17} /> Nuevo gasto</Button>}
       </div>
 
       {lista.length === 0 ? (
@@ -128,7 +121,7 @@ export function GastosManager({
         <div className="gy-table-wrap gy-card">
           <table className="gy-table">
             <thead>
-              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Valor</th>{puedeEscribir && <th></th>}</tr>
+              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Valor</th><th>Comprobante</th>{puedeEscribir && <th></th>}</tr>
             </thead>
             <tbody>
               {lista.map((x) => (
@@ -138,6 +131,17 @@ export function GastosManager({
                   <td>{x.descripcion ?? "—"}</td>
                   <td>{x.metodo ?? "—"}</td>
                   <td className="num font-semibold">{pesos(x.valor)}</td>
+                  <td>
+                    {x.comprobanteUrl ? (
+                      <a href={x.comprobanteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
+                        <FileText size={15} /> Ver
+                      </a>
+                    ) : puedeEscribir ? (
+                      <button className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }} onClick={() => setSubirEn(x.id)}>
+                        <Upload size={14} /> Subir
+                      </button>
+                    ) : <span style={{ color: "var(--tenue)" }}>—</span>}
+                  </td>
                   {puedeEscribir && (
                     <td>
                       <span className="flex justify-end gap-1">
@@ -185,12 +189,26 @@ export function GastosManager({
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm font-medium">
+            Comprobante {g?.comprobanteUrl && <span style={{ color: "var(--tenue)" }}>(ya tiene uno; subir reemplaza)</span>}
+            <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
             Observaciones
             <input className={inputCls} style={inputStyle} name="observaciones" defaultValue={g?.observaciones ?? ""} />
           </label>
           <div className="flex justify-end gap-2">
             <Button type="button" variante="plano" onClick={() => setModal({ abierto: false, gasto: null })}>Cancelar</Button>
             <Button type="submit" disabled={ocupado}>{ocupado ? "Guardando…" : g ? "Guardar" : "Registrar"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal abierto={!!subirEn} onClose={() => setSubirEn(null)} titulo="Subir comprobante">
+        <form onSubmit={onSubir} className="flex flex-col gap-3">
+          <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" required />
+          <div className="flex justify-end gap-2">
+            <Button type="button" variante="plano" onClick={() => setSubirEn(null)}>Cancelar</Button>
+            <Button type="submit" disabled={ocupado}>{ocupado ? "Subiendo…" : "Subir"}</Button>
           </div>
         </form>
       </Modal>
