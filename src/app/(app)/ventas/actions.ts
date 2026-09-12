@@ -245,6 +245,55 @@ export async function notificarEnvioEmail(ventaId: string): Promise<Resultado> {
   return { ok: true };
 }
 
+/** Elimina una venta: devuelve el stock y borra la venta con sus líneas y pagos. Solo ADMINISTRADOR. */
+export async function eliminarVenta(ventaId: string): Promise<Resultado> {
+  if (rolDe(await getSesion()) !== "ADMINISTRADOR") {
+    return { ok: false, error: "Solo un administrador puede eliminar ventas." };
+  }
+  const supabase = await createClient();
+
+  const { data: venta } = await supabase.from("pedidos").select("numero, estado").eq("id", ventaId).single();
+  if (!venta) return { ok: false, error: "Venta no encontrada." };
+
+  // Devolver stock de las prendas (si no estaba cancelada, que ya lo devolvió).
+  if (venta.estado !== "Cancelado") {
+    const { data: items } = await supabase
+      .from("pedido_items")
+      .select("prenda_id, nombre, cantidad")
+      .eq("pedido_id", ventaId);
+    for (const it of items ?? []) {
+      if (!it.prenda_id) continue;
+      const { data: pr } = await supabase.from("prendas").select("stock, vendidas").eq("id", it.prenda_id).single();
+      if (pr) {
+        const nuevo = pr.stock + it.cantidad;
+        await supabase
+          .from("prendas")
+          .update({ stock: nuevo, vendidas: Math.max(0, pr.vendidas - it.cantidad) })
+          .eq("id", it.prenda_id);
+        await supabase.from("movimientos_inventario").insert({
+          prenda_id: it.prenda_id,
+          prenda_nombre: it.nombre,
+          tipo: "ENTRADA",
+          cantidad: it.cantidad,
+          stock_anterior: pr.stock,
+          stock_nuevo: nuevo,
+          referencia: `Eliminación ${venta.numero ?? ""}`,
+        });
+      }
+    }
+  }
+
+  // Borra la venta; las líneas y pagos se eliminan en cascada (FK on delete cascade).
+  const { error } = await supabase.from("pedidos").delete().eq("id", ventaId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/ventas");
+  revalidatePath("/prendas");
+  revalidatePath("/inventario");
+  revalidatePath("/pagos");
+  return { ok: true };
+}
+
 /** Registra un pago contra la venta. El trigger recalcula pagado/saldo. */
 export async function registrarPago(
   ventaId: string,

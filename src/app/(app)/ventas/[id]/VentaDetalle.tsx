@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock } from "lucide-react";
+import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -17,6 +17,7 @@ import {
   marcarNotificado,
   registrarPago,
   actualizarEntrega,
+  eliminarVenta,
 } from "../actions";
 
 type Venta = Tables<"pedidos">;
@@ -37,6 +38,7 @@ export function VentaDetalle({
   metodos,
   marca,
   puedeEscribir,
+  esAdmin,
 }: {
   venta: Venta;
   items: Item[];
@@ -46,6 +48,7 @@ export function VentaDetalle({
   metodos: string[];
   marca: string;
   puedeEscribir: boolean;
+  esAdmin: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -127,6 +130,20 @@ export function VentaDetalle({
     else toast(res.error ?? "Error", "error");
   }
 
+  async function onEliminar() {
+    if (!confirm(`¿Eliminar la venta ${venta.numero ?? ""}? Esto devuelve el stock (reestock) y borra la venta con sus pagos. No se puede deshacer.`)) return;
+    setOcupado(true);
+    const res = await eliminarVenta(venta.id);
+    setOcupado(false);
+    if (res.ok) {
+      toast("Venta eliminada y stock devuelto", "exito");
+      router.push("/ventas");
+      router.refresh();
+    } else {
+      toast(res.error ?? "Error", "error");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Cabecera */}
@@ -159,6 +176,17 @@ export function VentaDetalle({
               <Button onClick={() => setModalPago(true)} disabled={ocupado}>
                 <Plus size={16} /> Registrar pago
               </Button>
+            )}
+            {esAdmin && (
+              <button
+                className="gy-btn gy-btn-plano ml-auto"
+                style={{ color: "#D33A2C" }}
+                onClick={onEliminar}
+                disabled={ocupado}
+                title="Eliminar venta (devuelve el stock)"
+              >
+                <Trash2 size={16} /> Eliminar
+              </button>
             )}
           </div>
         )}
