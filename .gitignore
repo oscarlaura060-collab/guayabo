@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# Claves PÚBLICAS de Supabase (anon/publishable, protegidas por RLS): seguras en el repo.
+# La service_role y RESEND_API_KEY NO van aquí; se configuran como secretos en Vercel.
+!.env.production
 
 # archivos subidos por el usuario (contexto de la migración, no van al repo)
 /uploads
