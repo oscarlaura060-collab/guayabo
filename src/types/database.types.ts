@@ -25,6 +25,7 @@ export type Database = {
           color: string | null
           costo: number
           created_at: string
+          disponible: boolean
           estado: string
           fecha: string | null
           fecha_limite: string | null
@@ -48,6 +49,7 @@ export type Database = {
           color?: string | null
           costo?: number
           created_at?: string
+          disponible?: boolean
           estado?: string
           fecha?: string | null
           fecha_limite?: string | null
@@ -71,6 +73,7 @@ export type Database = {
           color?: string | null
           costo?: number
           created_at?: string
+          disponible?: boolean
           estado?: string
           fecha?: string | null
           fecha_limite?: string | null
