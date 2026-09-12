@@ -259,6 +259,7 @@ export type Database = {
           fecha: string
           id: string
           legacy_id: string | null
+          comprobante_path: string | null
           metodo: string | null
           observaciones: string | null
           valor: number
@@ -272,6 +273,7 @@ export type Database = {
           fecha?: string
           id?: string
           legacy_id?: string | null
+          comprobante_path?: string | null
           metodo?: string | null
           observaciones?: string | null
           valor?: number
@@ -285,6 +287,7 @@ export type Database = {
           fecha?: string
           id?: string
           legacy_id?: string | null
+          comprobante_path?: string | null
           metodo?: string | null
           observaciones?: string | null
           valor?: number
