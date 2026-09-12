@@ -1,0 +1,310 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Tokens de la marca GUAYABO.
+   El layout raíz sobrescribe estas variables con los valores de la
+   tabla `config` (COLOR_PRIMARIO, etc.). Aquí van los respaldos.
+   --------------------------------------------------------------- */
+:root {
+  --color-primario: #d2de52; /* verde lima */
+  --color-secundario: #e8288e; /* rosa */
+  --color-boton: #e8288e;
+  --color-fondo: #fffdf4; /* crema */
+  --color-tarjeta: #ffffff;
+  --color-texto: #191914; /* tinta */
+  --radio-borde: 22px;
+
+  --borde: color-mix(in srgb, var(--color-texto) 12%, transparent);
+  --borde-suave: color-mix(in srgb, var(--color-texto) 7%, transparent);
+  --tenue: color-mix(in srgb, var(--color-texto) 55%, transparent);
+  --sombra: 0 10px 30px -18px color-mix(in srgb, var(--color-texto) 60%, transparent);
+}
+
+@theme inline {
+  --color-primario: var(--color-primario);
+  --color-secundario: var(--color-secundario);
+  --color-fondo: var(--color-fondo);
+  --color-tarjeta: var(--color-tarjeta);
+  --color-texto: var(--color-texto);
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--font-poppins), system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cifras grandes (dashboard): serif de alto contraste. */
+.gy-cifra {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- Botones ---------------- */
+.gy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.12s ease, background 0.12s ease;
+  line-height: 1.1;
+  text-decoration: none;
+}
+.gy-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+.gy-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.gy-btn-solido {
+  background: var(--color-boton);
+  color: #fff;
+}
+.gy-btn-solido:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.gy-btn-contorno {
+  background: transparent;
+  border-color: var(--color-boton);
+  color: var(--color-boton);
+}
+.gy-btn-contorno:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-boton) 8%, transparent);
+}
+.gy-btn-plano {
+  background: transparent;
+  color: var(--color-texto);
+}
+.gy-btn-plano:hover:not(:disabled) {
+  background: var(--borde-suave);
+}
+
+/* ---------------- Tarjeta ---------------- */
+.gy-card {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--borde-suave);
+  border-radius: var(--radio-borde);
+  box-shadow: var(--sombra);
+}
+
+/* ---------------- Chip de estado ---------------- */
+.gy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  border: 1px solid transparent;
+}
+.gy-chip .gy-chip-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+/* ---------------- Píldoras del menú ---------------- */
+.gy-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-style: italic;
+  font-size: 0.93rem;
+  color: var(--color-texto);
+  border: 2px solid transparent;
+  background: color-mix(in srgb, var(--color-secundario) 12%, transparent);
+  transition: background 0.12s ease, border-color 0.12s ease;
+  text-decoration: none;
+}
+.gy-pill:hover {
+  background: color-mix(in srgb, var(--color-secundario) 20%, transparent);
+}
+.gy-pill[data-activo="true"] {
+  border-color: var(--color-secundario);
+  background: color-mix(in srgb, var(--color-secundario) 16%, transparent);
+}
+
+/* ---------------- Tabla con scroll horizontal en móvil ---------------- */
+.gy-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radio-borde);
+}
+.gy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 560px;
+}
+.gy-table th,
+.gy-table td {
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--borde-suave);
+  white-space: nowrap;
+}
+.gy-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tenue);
+  font-weight: 700;
+}
+
+/* ---------------- Toast ---------------- */
+.gy-toast-host {
+  position: fixed;
+  z-index: 60;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(92vw, 420px);
+}
+.gy-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.8rem 1rem;
+  border-radius: 14px;
+  background: var(--color-tarjeta);
+  border: 1px solid var(--borde);
+  box-shadow: var(--sombra);
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: gy-rise 0.2s ease;
+}
+.gy-toast[data-tipo="error"] {
+  border-color: color-mix(in srgb, #d33a2c 55%, transparent);
+}
+.gy-toast[data-tipo="exito"] {
+  border-color: color-mix(in srgb, #3aa76d 55%, transparent);
+}
+@keyframes gy-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- Modal (en móvil sube desde abajo) ---------------- */
+.gy-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--color-texto) 45%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: gy-fade 0.18s ease;
+}
+.gy-modal {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio-borde);
+  box-shadow: var(--sombra);
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: gy-pop 0.2s ease;
+}
+@keyframes gy-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes gy-pop {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@media (max-width: 640px) {
+  .gy-modal-bg {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .gy-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    animation: gy-sheet 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes gy-sheet {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+}
+
+/* ---------------- Skeleton de carga ---------------- */
+.gy-skel {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--borde-suave),
+    var(--borde),
+    var(--borde-suave)
+  );
+  background-size: 200% 100%;
+  animation: gy-sk 1.2s linear infinite;
+}
+@keyframes gy-sk {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
