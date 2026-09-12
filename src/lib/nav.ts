@@ -2,7 +2,6 @@ import type { Rol } from "@/lib/auth";
 import {
   LayoutDashboard,
   ShoppingBag,
-  PackageCheck,
   BookmarkCheck,
   Shirt,
   Boxes,
@@ -34,7 +33,6 @@ const SOLO_ADMIN: Rol[] = ["ADMINISTRADOR"];
 export const SECCIONES: Seccion[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
   { href: "/ventas", label: "Ventas", icon: ShoppingBag, roles: TODOS },
-  { href: "/pedidos", label: "Pedidos", icon: PackageCheck, roles: TODOS },
   { href: "/apartados", label: "Apartados", icon: BookmarkCheck, roles: TODOS },
   { href: "/prendas", label: "Prendas", icon: Shirt, roles: TODOS },
   { href: "/inventario", label: "Inventario", icon: Boxes, roles: TODOS },

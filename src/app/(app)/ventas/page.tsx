@@ -3,20 +3,21 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getSesion, rolDe } from "@/lib/auth";
+import { getColoresEstado } from "@/lib/listas";
 import { VentasTabla } from "./VentasTabla";
 
 export const metadata = { title: "Ventas" };
 
 export default async function VentasPage() {
   const supabase = await createClient();
-  const [{ data: ventas }, sesion] = await Promise.all([
+  const [{ data: ventas }, coloresEstado, sesion] = await Promise.all([
     supabase
       .from("pedidos")
-      .select("id, numero, fecha, cliente_nombre, total, saldo, est_pago, estado")
-      .eq("tipo", "VENTA")
+      .select("id, numero, fecha, fecha_entrega, cliente_nombre, total, saldo, est_pago, estado")
       .eq("activo", true)
       .order("fecha", { ascending: false })
-      .limit(100),
+      .limit(200),
+    getColoresEstado("PEDIDO"),
     getSesion(),
   ]);
 
@@ -27,7 +28,7 @@ export default async function VentasPage() {
     <>
       <PageHeader
         titulo="Ventas"
-        descripcion="Ventas entregadas de inmediato."
+        descripcion="Ventas y pedidos: estado, entrega, envío y pagos en un solo lugar."
         accion={
           puedeEscribir ? (
             <Link href="/ventas/nueva" className="gy-btn gy-btn-solido">
@@ -36,7 +37,7 @@ export default async function VentasPage() {
           ) : undefined
         }
       />
-      <VentasTabla ventas={ventas ?? []} />
+      <VentasTabla ventas={ventas ?? []} coloresEstado={coloresEstado} />
     </>
   );
 }

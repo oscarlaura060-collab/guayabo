@@ -7,7 +7,6 @@ import { getSesion, rolDe } from "@/lib/auth";
 import { getListas } from "@/lib/listas";
 import { getConfig } from "@/lib/config";
 import { NuevaVentaFlujo } from "./NuevaVentaFlujo";
-import { crearVenta } from "../actions";
 
 export const metadata = { title: "Nueva venta" };
 
@@ -40,9 +39,6 @@ export default async function NuevaVentaPage() {
         metodos={(metodosLista ?? []).map((m) => m.nombre)}
         ventaBajoPedido={config.VENTA_BAJO_PEDIDO === "TRUE"}
         permitirStockNegativo={config.PERMITIR_STOCK_NEGATIVO === "TRUE"}
-        modo="VENTA"
-        registrar={crearVenta}
-        volverA="/ventas"
       />
     </>
   );

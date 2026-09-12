@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, ShoppingBag } from "lucide-react";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { pesos, fecha as fmtFecha } from "@/lib/format";
-import { ShoppingBag } from "lucide-react";
 
 export interface VentaRow {
   id: string;
   numero: string | null;
   fecha: string;
+  fecha_entrega: string | null;
   cliente_nombre: string | null;
   total: number;
   saldo: number;
@@ -25,7 +26,14 @@ const colorPago: Record<string, string> = {
   Reembolsado: "#C4C4C4",
 };
 
-export function VentasTabla({ ventas }: { ventas: VentaRow[] }) {
+export function VentasTabla({
+  ventas,
+  coloresEstado,
+}: {
+  ventas: VentaRow[];
+  coloresEstado: Record<string, string>;
+}) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -65,6 +73,7 @@ export function VentasTabla({ ventas }: { ventas: VentaRow[] }) {
               <th>Número</th>
               <th>Fecha</th>
               <th>Cliente</th>
+              <th>Estado</th>
               <th>Total</th>
               <th>Saldo</th>
               <th>Pago</th>
@@ -72,13 +81,14 @@ export function VentasTabla({ ventas }: { ventas: VentaRow[] }) {
           </thead>
           <tbody>
             {lista.map((v) => (
-              <tr key={v.id}>
-                <td className="font-semibold">{v.numero}</td>
+              <tr key={v.id} className="cursor-pointer" onClick={() => router.push(`/ventas/${v.id}`)}>
+                <td className="font-semibold" style={{ color: "var(--color-secundario)" }}>{v.numero}</td>
                 <td>{fmtFecha(v.fecha)}</td>
                 <td>{v.cliente_nombre ?? "—"}</td>
+                <td><StatusChip texto={v.estado} color={coloresEstado[v.estado]} /></td>
                 <td className="num">{pesos(v.total)}</td>
                 <td className="num" style={{ color: v.saldo > 0 ? "#D33A2C" : undefined }}>{pesos(v.saldo)}</td>
-                <td><StatusChip texto={v.est_pago} color={colorPago[v.est_pago] ?? "#F4B740"} /></td>
+                <td><StatusChip texto={v.est_pago} color={colorPago[v.est_pago]} /></td>
               </tr>
             ))}
           </tbody>
