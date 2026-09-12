@@ -47,6 +47,7 @@ export default async function VentaPage({ params }: { params: Promise<{ id: stri
         metodos={metodos.map((m) => m.nombre)}
         marca={marcaRow?.valor || "GUAYABO"}
         puedeEscribir={puedeEscribir}
+        esAdmin={rol === "ADMINISTRADOR"}
       />
     </>
   );

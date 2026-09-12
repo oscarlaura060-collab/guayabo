@@ -116,7 +116,8 @@ export function NuevaVentaFlujo({
     setEnviando(true);
     const res = await crearVenta({
       cliente_id: clienteId,
-      cliente_nombre: clienteId ? null : clienteQuery.trim() || null,
+      // Guardamos también el nombre (elegido de la lista o escrito) para mostrarlo en los listados.
+      cliente_nombre: clienteQuery.trim() || null,
       fecha_entrega: fechaEntrega || null,
       descuento: Number(descuento) || 0,
       envio: Number(envio) || 0,
