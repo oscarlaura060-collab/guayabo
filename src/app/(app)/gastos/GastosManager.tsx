@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Pencil, Trash2, Receipt, FileText, Upload } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Receipt, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fecha as fmtFecha, hoyBogota } from "@/lib/format";
-import { crearGasto, actualizarGasto, desactivarGasto, subirComprobanteGasto } from "./actions";
+import { crearGasto, actualizarGasto, desactivarGasto, subirComprobanteGasto, eliminarComprobanteGasto } from "./actions";
 import { firmarComprobante } from "../comprobante-actions";
 
 export interface GastoRow {
@@ -19,7 +19,7 @@ export interface GastoRow {
   valor: number;
   metodo: string | null;
   observaciones: string | null;
-  comprobantePath: string | null;
+  comprobantes: string[];
 }
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
@@ -41,7 +41,7 @@ export function GastosManager({
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("");
   const [modal, setModal] = useState<{ abierto: boolean; gasto: GastoRow | null }>({ abierto: false, gasto: null });
-  const [subirEn, setSubirEn] = useState<string | null>(null);
+  const [comp, setComp] = useState<GastoRow | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const lista = useMemo(() => {
@@ -60,36 +60,41 @@ export function GastosManager({
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [lista]);
 
+  const compActual = comp ? gastos.find((g) => g.id === comp.id) ?? comp : null;
+
   async function onGuardar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setOcupado(true);
     const fd = new FormData(e.currentTarget);
     const res = modal.gasto ? await actualizarGasto(modal.gasto.id, fd) : await crearGasto(fd);
     setOcupado(false);
-    if (res.ok) {
-      toast(modal.gasto ? "Gasto actualizado" : "Gasto registrado", "exito");
-      setModal({ abierto: false, gasto: null });
-      router.refresh();
-    } else toast(res.error ?? "Error", "error");
-  }
-
-  async function onSubir(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!subirEn) return;
-    setOcupado(true);
-    const res = await subirComprobanteGasto(subirEn, new FormData(e.currentTarget));
-    setOcupado(false);
-    if (res.ok) { toast("Comprobante subido", "exito"); setSubirEn(null); router.refresh(); }
+    if (res.ok) { toast(modal.gasto ? "Gasto actualizado" : "Gasto registrado", "exito"); setModal({ abierto: false, gasto: null }); router.refresh(); }
     else toast(res.error ?? "Error", "error");
   }
 
   async function onVer(path: string) {
-    toast("Abriendo comprobante…", "info");
     const { url } = await firmarComprobante(path);
     if (url) window.open(url, "_blank", "noopener,noreferrer");
     else toast("No se pudo abrir el comprobante", "error");
   }
-
+  async function onAgregar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!compActual) return;
+    setOcupado(true);
+    const res = await subirComprobanteGasto(compActual.id, new FormData(e.currentTarget));
+    setOcupado(false);
+    if (res.ok) { toast("Comprobante(s) agregado(s)", "exito"); e.currentTarget.reset(); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+  async function onEliminarComp(path: string) {
+    if (!compActual) return;
+    if (!confirm("¿Eliminar este comprobante?")) return;
+    setOcupado(true);
+    const res = await eliminarComprobanteGasto(compActual.id, path);
+    setOcupado(false);
+    if (res.ok) { toast("Comprobante eliminado", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
   async function onBorrar(g: GastoRow) {
     if (!confirm("¿Eliminar este gasto?")) return;
     const res = await desactivarGasto(g.id);
@@ -129,7 +134,7 @@ export function GastosManager({
         <div className="gy-table-wrap gy-card">
           <table className="gy-table">
             <thead>
-              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Valor</th><th>Comprobante</th>{puedeEscribir && <th></th>}</tr>
+              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Valor</th><th>Comprobantes</th>{puedeEscribir && <th></th>}</tr>
             </thead>
             <tbody>
               {lista.map((x) => (
@@ -140,13 +145,13 @@ export function GastosManager({
                   <td>{x.metodo ?? "—"}</td>
                   <td className="num font-semibold">{pesos(x.valor)}</td>
                   <td>
-                    {x.comprobantePath ? (
-                      <button onClick={() => onVer(x.comprobantePath!)} className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
-                        <FileText size={15} /> Ver
+                    {x.comprobantes.length > 0 ? (
+                      <button onClick={() => setComp(x)} className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
+                        <FileText size={15} /> {x.comprobantes.length} ver
                       </button>
                     ) : puedeEscribir ? (
-                      <button className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }} onClick={() => setSubirEn(x.id)}>
-                        <Upload size={14} /> Subir
+                      <button onClick={() => setComp(x)} className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }}>
+                        <Plus size={14} /> Agregar
                       </button>
                     ) : <span style={{ color: "var(--tenue)" }}>—</span>}
                   </td>
@@ -165,31 +170,21 @@ export function GastosManager({
         </div>
       )}
 
+      {/* Alta / edición */}
       <Modal abierto={modal.abierto} onClose={() => setModal({ abierto: false, gasto: null })} titulo={g ? "Editar gasto" : "Nuevo gasto"}>
         <form onSubmit={onGuardar} className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Fecha
-              <input className={inputCls} style={inputStyle} name="fecha" type="date" defaultValue={g?.fecha ?? hoyBogota()} required />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Categoría
+            <label className="flex flex-col gap-1 text-sm font-medium">Fecha<input className={inputCls} style={inputStyle} name="fecha" type="date" defaultValue={g?.fecha ?? hoyBogota()} required /></label>
+            <label className="flex flex-col gap-1 text-sm font-medium">Categoría
               <select className={inputCls} style={inputStyle} name="categoria" defaultValue={g?.categoria ?? categorias[0] ?? ""} required>
                 {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
           </div>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Descripción
-            <input className={inputCls} style={inputStyle} name="descripcion" defaultValue={g?.descripcion ?? ""} required />
-          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Descripción<input className={inputCls} style={inputStyle} name="descripcion" defaultValue={g?.descripcion ?? ""} required /></label>
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Valor
-              <input className={inputCls} style={inputStyle} name="valor" type="number" min="1" defaultValue={g?.valor ?? ""} required />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Método
+            <label className="flex flex-col gap-1 text-sm font-medium">Valor<input className={inputCls} style={inputStyle} name="valor" type="number" min="1" defaultValue={g?.valor ?? ""} required /></label>
+            <label className="flex flex-col gap-1 text-sm font-medium">Método
               <select className={inputCls} style={inputStyle} name="metodo" defaultValue={g?.metodo ?? ""}>
                 <option value="">—</option>
                 {metodos.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -197,13 +192,10 @@ export function GastosManager({
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Comprobante {g?.comprobantePath && <span style={{ color: "var(--tenue)" }}>(ya tiene uno; subir reemplaza)</span>}
-            <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" />
+            Comprobantes {g?.comprobantes?.length ? <span style={{ color: "var(--tenue)" }}>(ya tiene {g.comprobantes.length}; estos se agregan)</span> : "(puedes elegir varios)"}
+            <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" multiple />
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Observaciones
-            <input className={inputCls} style={inputStyle} name="observaciones" defaultValue={g?.observaciones ?? ""} />
-          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Observaciones<input className={inputCls} style={inputStyle} name="observaciones" defaultValue={g?.observaciones ?? ""} /></label>
           <div className="flex justify-end gap-2">
             <Button type="button" variante="plano" onClick={() => setModal({ abierto: false, gasto: null })}>Cancelar</Button>
             <Button type="submit" disabled={ocupado}>{ocupado ? "Guardando…" : g ? "Guardar" : "Registrar"}</Button>
@@ -211,14 +203,36 @@ export function GastosManager({
         </form>
       </Modal>
 
-      <Modal abierto={!!subirEn} onClose={() => setSubirEn(null)} titulo="Subir comprobante">
-        <form onSubmit={onSubir} className="flex flex-col gap-3">
-          <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" required />
-          <div className="flex justify-end gap-2">
-            <Button type="button" variante="plano" onClick={() => setSubirEn(null)}>Cancelar</Button>
-            <Button type="submit" disabled={ocupado}>{ocupado ? "Subiendo…" : "Subir"}</Button>
+      {/* Comprobantes del gasto */}
+      <Modal abierto={!!compActual} onClose={() => setComp(null)} titulo="Comprobantes del gasto">
+        {compActual && (
+          <div className="flex flex-col gap-3">
+            {compActual.comprobantes.length === 0 ? (
+              <p className="text-sm" style={{ color: "var(--tenue)" }}>Sin comprobantes aún.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {compActual.comprobantes.map((path, i) => (
+                  <div key={path} className="flex items-center justify-between gap-2 rounded-xl border p-2" style={{ borderColor: "var(--borde-suave)" }}>
+                    <button onClick={() => onVer(path)} className="inline-flex items-center gap-2 text-sm" style={{ color: "var(--color-secundario)" }}>
+                      <FileText size={16} /> Comprobante {i + 1}
+                    </button>
+                    {puedeEscribir && (
+                      <button className="gy-btn gy-btn-plano !p-1.5" style={{ color: "#D33A2C" }} onClick={() => onEliminarComp(path)} disabled={ocupado} aria-label="Eliminar"><Trash2 size={15} /></button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {puedeEscribir && (
+              <form onSubmit={onAgregar} className="flex flex-col gap-2 border-t pt-3" style={{ borderColor: "var(--borde-suave)" }}>
+                <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" multiple required />
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={ocupado}>{ocupado ? "Subiendo…" : "Agregar comprobante(s)"}</Button>
+                </div>
+              </form>
+            )}
           </div>
-        </form>
+        )}
       </Modal>
     </>
   );
