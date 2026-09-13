@@ -24,7 +24,7 @@ export default async function LoginPage() {
         <div className="gy-card p-6">
           <h1 className="mb-1 text-xl font-semibold">Entrar</h1>
           <p className="mb-5 text-sm" style={{ color: "var(--tenue)" }}>
-            Usa tu correo y contraseña.
+            Ingresa la clave de acceso del equipo.
           </p>
           <Suspense fallback={null}>
             <LoginForm />
