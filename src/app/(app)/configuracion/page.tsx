@@ -3,6 +3,7 @@ import { exigirAcceso } from "@/lib/guard";
 import { createClient } from "@/lib/supabase/server";
 import { getSesion } from "@/lib/auth";
 import { ConfiguracionManager, type ConfigRow, type PerfilRow } from "./ConfiguracionManager";
+import type { ListaRow } from "./CatalogosEditor";
 
 export const metadata = { title: "Configuración" };
 
@@ -10,7 +11,7 @@ export default async function ConfiguracionPage() {
   await exigirAcceso("/configuracion");
   const supabase = await createClient();
 
-  const [{ data: config }, { data: perfiles }, sesion] = await Promise.all([
+  const [{ data: config }, { data: perfiles }, { data: listas }, sesion] = await Promise.all([
     supabase
       .from("config")
       .select("clave, valor, tipo, grupo, descripcion")
@@ -21,6 +22,11 @@ export default async function ConfiguracionPage() {
       .from("perfiles")
       .select("id, email, nombre, rol, activo")
       .order("email", { ascending: true }),
+    supabase
+      .from("listas")
+      .select("id, tipo, nombre, hex, ambito, activo, orden")
+      .order("tipo", { ascending: true })
+      .order("orden", { ascending: true }),
     getSesion(),
   ]);
 
@@ -33,6 +39,7 @@ export default async function ConfiguracionPage() {
       <ConfiguracionManager
         config={(config ?? []) as ConfigRow[]}
         perfiles={(perfiles ?? []) as PerfilRow[]}
+        listas={(listas ?? []) as ListaRow[]}
         currentUserId={sesion?.userId ?? ""}
       />
     </>

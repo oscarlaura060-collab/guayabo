@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSesion, rolDe } from "@/lib/auth";
+import type { TablesUpdate } from "@/types/database.types";
 
 async function exigirAdmin() {
   return rolDe(await getSesion()) === "ADMINISTRADOR";
@@ -48,6 +49,64 @@ export async function subirLogo(formData: FormData): Promise<Resultado> {
   const { error: e2 } = await supabase.from("config").update({ valor: url }).eq("clave", "LOGO_URL");
   if (e2) return { ok: false, error: e2.message };
   revalidatePath("/", "layout");
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+// ---------------- Catálogos (listas) ----------------
+
+export async function crearLista(datos: {
+  tipo: string;
+  nombre: string;
+  hex?: string | null;
+  ambito?: string | null;
+}): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const nombre = datos.nombre.trim();
+  if (!nombre) return { ok: false, error: "Escribe un nombre." };
+  const supabase = await createClient();
+  const { data: max } = await supabase
+    .from("listas")
+    .select("orden")
+    .eq("tipo", datos.tipo)
+    .order("orden", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const { error } = await supabase.from("listas").insert({
+    tipo: datos.tipo,
+    nombre,
+    hex: datos.hex || null,
+    ambito: datos.ambito || null,
+    orden: (max?.orden ?? 0) + 1,
+    activo: true,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+export async function actualizarLista(
+  id: string,
+  datos: { nombre?: string; hex?: string | null; ambito?: string | null; activo?: boolean },
+): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const supabase = await createClient();
+  const patch: TablesUpdate<"listas"> = {};
+  if (datos.nombre !== undefined) patch.nombre = datos.nombre.trim();
+  if (datos.hex !== undefined) patch.hex = datos.hex || null;
+  if (datos.ambito !== undefined) patch.ambito = datos.ambito || null;
+  if (datos.activo !== undefined) patch.activo = datos.activo;
+  const { error } = await supabase.from("listas").update(patch).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
+export async function eliminarLista(id: string): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("listas").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/configuracion");
   return { ok: true };
 }

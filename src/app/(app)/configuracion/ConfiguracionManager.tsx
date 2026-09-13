@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings2, Users, Plus, ShieldCheck } from "lucide-react";
+import { Settings2, Users, Plus, ShieldCheck, ListChecks } from "lucide-react";
+import { CatalogosEditor, type ListaRow } from "./CatalogosEditor";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -38,15 +39,17 @@ const inputStyle = { borderColor: "var(--borde-suave)" } as const;
 export function ConfiguracionManager({
   config,
   perfiles,
+  listas,
   currentUserId,
 }: {
   config: ConfigRow[];
   perfiles: PerfilRow[];
+  listas: ListaRow[];
   currentUserId: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const [tab, setTab] = useState<"general" | "cuentas">("general");
+  const [tab, setTab] = useState<"general" | "catalogos" | "cuentas">("general");
 
   // ---- Config editable ----
   const [valores, setValores] = useState<Record<string, string>>(
@@ -163,10 +166,15 @@ export function ConfiguracionManager({
         <button className="gy-pill" data-activo={tab === "general"} onClick={() => setTab("general")}>
           <Settings2 size={16} /> General
         </button>
+        <button className="gy-pill" data-activo={tab === "catalogos"} onClick={() => setTab("catalogos")}>
+          <ListChecks size={16} /> Catálogos
+        </button>
         <button className="gy-pill" data-activo={tab === "cuentas"} onClick={() => setTab("cuentas")}>
           <Users size={16} /> Cuentas
         </button>
       </div>
+
+      {tab === "catalogos" && <CatalogosEditor listas={listas} />}
 
       {tab === "general" && (
         <>

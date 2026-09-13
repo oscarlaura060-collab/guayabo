@@ -5,6 +5,7 @@ import { Trash2, Plus, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { pesos } from "@/lib/format";
 import { urlImagenPrenda, desgloseCostos } from "@/lib/prendas";
+import { comprimirImagen } from "@/lib/imagen";
 import type { CatalogosPrenda } from "@/lib/listas";
 import type { Tables } from "@/types/database.types";
 
@@ -82,7 +83,7 @@ export function PrendaForm({
           .map((c) => ({ nombre: c.nombre, valor: Number(c.valor) })),
       ),
     );
-    if (imagen) fd.set("imagen", imagen);
+    if (imagen) fd.set("imagen", await comprimirImagen(imagen));
     await onGuardar(fd);
     setEnviando(false);
   }
