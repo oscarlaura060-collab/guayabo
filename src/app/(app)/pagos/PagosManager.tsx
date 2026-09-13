@@ -24,6 +24,7 @@ export interface PagoRow {
   comprobantes: string[];
 }
 export interface PedidoPendiente {
+  tipo: "PEDIDO" | "APARTADO";
   id: string;
   numero: string | null;
   cliente_nombre: string | null;
@@ -65,6 +66,9 @@ export function PagosManager({
         .filter(Boolean).some((x) => String(x).toLowerCase().includes(t));
     });
   }, [pagos, q, filtroMetodo]);
+
+  const pendientesPedidos = pendientes.filter((p) => p.tipo === "PEDIDO");
+  const pendientesApartados = pendientes.filter((p) => p.tipo === "APARTADO");
 
   const totalFiltrado = lista.reduce((s, p) => s + p.valor, 0);
   const porMetodo = useMemo(() => {
@@ -188,14 +192,25 @@ export function PagosManager({
         <form onSubmit={onRegistrar} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Compra (con saldo pendiente)
-            <select className={inputCls} style={inputStyle} name="pedido_id" required defaultValue="">
-              <option value="" disabled>Elige el pedido…</option>
-              {pendientes.map((p) => (
-                <option key={p.id} value={p.id}>{p.numero} · {p.cliente_nombre ?? "—"} · saldo {pesos(p.saldo)}</option>
-              ))}
+            <select className={inputCls} style={inputStyle} name="destino" required defaultValue="">
+              <option value="" disabled>Elige la venta o apartado…</option>
+              {pendientesPedidos.length > 0 && (
+                <optgroup label="Ventas / pedidos">
+                  {pendientesPedidos.map((p) => (
+                    <option key={p.id} value={`${p.tipo}:${p.id}`}>{p.numero} · {p.cliente_nombre ?? "Sin cliente"} · saldo {pesos(p.saldo)}</option>
+                  ))}
+                </optgroup>
+              )}
+              {pendientesApartados.length > 0 && (
+                <optgroup label="Apartados">
+                  {pendientesApartados.map((p) => (
+                    <option key={p.id} value={`${p.tipo}:${p.id}`}>{p.numero} · {p.cliente_nombre ?? "Sin cliente"} · saldo {pesos(p.saldo)}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </label>
-          {pendientes.length === 0 && <p className="text-xs" style={{ color: "var(--tenue)" }}>No hay pedidos con saldo pendiente.</p>}
+          {pendientes.length === 0 && <p className="text-xs" style={{ color: "var(--tenue)" }}>No hay ventas ni apartados con saldo pendiente.</p>}
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">Valor<input className={inputCls} style={inputStyle} name="valor" type="number" min="1" required /></label>
             <label className="flex flex-col gap-1 text-sm font-medium">Método

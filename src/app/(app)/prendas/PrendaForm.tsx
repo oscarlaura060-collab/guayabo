@@ -22,11 +22,13 @@ const inputStyle = { borderColor: "var(--borde-suave)" } as const;
 export function PrendaForm({
   prenda,
   catalogos,
+  esEdicion = false,
   onGuardar,
   onCancelar,
 }: {
   prenda: Prenda | null;
   catalogos: CatalogosPrenda;
+  esEdicion?: boolean;
   onGuardar: (fd: FormData) => Promise<void>;
   onCancelar: () => void;
 }) {
@@ -232,7 +234,7 @@ export function PrendaForm({
           Cancelar
         </Button>
         <Button type="submit" disabled={enviando}>
-          {enviando ? "Guardando…" : prenda ? "Guardar cambios" : "Crear prenda"}
+          {enviando ? "Guardando…" : esEdicion ? "Guardar cambios" : "Crear prenda"}
         </Button>
       </div>
     </form>

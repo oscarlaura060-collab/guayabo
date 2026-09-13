@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound, Shirt } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { pesos } from "@/lib/format";
+import { urlImagenPrenda } from "@/lib/prendas";
+import type { Json } from "@/types/database.types";
 import { crearVenta } from "../actions";
 
 export interface ClienteOpt {
@@ -17,11 +19,14 @@ export interface PrendaOpt {
   id: string;
   nombre: string;
   codigo: string | null;
+  categoria: string | null;
   talla: string | null;
   color: string | null;
   precio: number;
   costo: number;
   stock: number;
+  imagen_path: string | null;
+  extra: Json;
 }
 interface CartItem {
   prenda_id: string;
@@ -58,6 +63,7 @@ export function NuevaVentaFlujo({
   const [mostrarClientes, setMostrarClientes] = useState(false);
 
   const [prendaQuery, setPrendaQuery] = useState("");
+  const [catFiltro, setCatFiltro] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
 
   const [descuento, setDescuento] = useState("0");
@@ -75,13 +81,21 @@ export function NuevaVentaFlujo({
       .slice(0, 8);
   }, [clientes, clienteQuery]);
 
+  const categorias = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of prendas) if (p.categoria) set.add(p.categoria);
+    return [...set].sort();
+  }, [prendas]);
+
   const prendasFiltradas = useMemo(() => {
     const t = prendaQuery.trim().toLowerCase();
-    if (!t) return [];
     return prendas
-      .filter((p) => [p.nombre, p.codigo, p.talla, p.color].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)))
-      .slice(0, 8);
-  }, [prendas, prendaQuery]);
+      .filter((p) => !catFiltro || p.categoria === catFiltro)
+      .filter((p) =>
+        !t || [p.nombre, p.codigo, p.talla, p.color].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
+      )
+      .slice(0, 60);
+  }, [prendas, prendaQuery, catFiltro]);
 
   const subtotal = cart.reduce((s, it) => s + it.precio * it.cantidad, 0);
   const total = Math.max(subtotal - (Number(descuento) || 0) + (Number(envio) || 0), 0);
@@ -191,25 +205,71 @@ export function NuevaVentaFlujo({
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <ShoppingBag size={16} style={{ color: "var(--color-secundario)" }} /> Prendas
           </div>
-          <div className="relative">
-            <label className="relative flex items-center">
-              <Search size={16} className="pointer-events-none absolute left-3" style={{ color: "var(--tenue)" }} />
-              <input className={`${inputCls} w-full pl-9`} style={inputStyle} placeholder="Buscar prenda por nombre o código…" value={prendaQuery} onChange={(e) => setPrendaQuery(e.target.value)} />
-            </label>
-            {prendasFiltradas.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border bg-[var(--color-tarjeta)] shadow-lg" style={{ borderColor: "var(--borde-suave)" }}>
-                {prendasFiltradas.map((p) => (
-                  <button key={p.id} type="button" className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--color-fondo)]" onClick={() => agregarPrenda(p)}>
-                    <span>
-                      {p.nombre}
-                      <span className="ml-1 text-xs" style={{ color: "var(--tenue)" }}>{[p.talla, p.color].filter(Boolean).join(" · ")}</span>
-                    </span>
-                    <span className="text-xs" style={{ color: "var(--tenue)" }}>{pesos(p.precio)} · stock {p.stock}</span>
+          <label className="relative flex items-center">
+            <Search size={16} className="pointer-events-none absolute left-3" style={{ color: "var(--tenue)" }} />
+            <input className={`${inputCls} w-full pl-9`} style={inputStyle} placeholder="Buscar prenda por nombre o código…" value={prendaQuery} onChange={(e) => setPrendaQuery(e.target.value)} />
+          </label>
+
+          {/* Filtro por categoría */}
+          {categorias.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button type="button" className="gy-pill !py-1 !text-xs" data-activo={catFiltro === null} onClick={() => setCatFiltro(null)}>
+                Todas
+              </button>
+              {categorias.map((c) => (
+                <button key={c} type="button" className="gy-pill !py-1 !text-xs" data-activo={catFiltro === c} onClick={() => setCatFiltro((x) => (x === c ? null : c))}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Catálogo visual: imagen, nombre, talla y precio */}
+          {prendasFiltradas.length === 0 ? (
+            <p className="mt-3 py-4 text-center text-sm" style={{ color: "var(--tenue)" }}>Sin prendas que coincidan.</p>
+          ) : (
+            <div className="mt-3 grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
+              {prendasFiltradas.map((p) => {
+                const url = urlImagenPrenda(p);
+                const agotada = p.stock <= 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => agregarPrenda(p)}
+                    className="group flex flex-col overflow-hidden rounded-xl border text-left transition hover:shadow-md"
+                    style={{ borderColor: "var(--borde-suave)" }}
+                  >
+                    <div className="relative aspect-square w-full" style={{ background: "var(--color-fondo)" }}>
+                      {url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt={p.nombre} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-full place-items-center" style={{ color: "var(--tenue)" }}>
+                          <Shirt size={22} />
+                        </div>
+                      )}
+                      {p.talla && (
+                        <span className="absolute right-1 top-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: "var(--color-primario)", color: "var(--color-tinta)" }}>
+                          {p.talla}
+                        </span>
+                      )}
+                      <span className="absolute bottom-1 left-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: agotada ? "#D33A2C" : "rgba(0,0,0,.55)", color: "#fff" }}>
+                        {agotada ? "Agotado" : `stock ${p.stock}`}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 p-2">
+                      <span className="truncate text-xs font-semibold leading-tight">{p.nombre}</span>
+                      <span className="truncate text-[11px]" style={{ color: "var(--tenue)" }}>
+                        {[p.color].filter(Boolean).join(" · ") || "—"}
+                      </span>
+                      <span className="gy-cifra text-xs">{pesos(p.precio)}</span>
+                    </div>
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="mt-3 flex flex-col gap-2">
             {cart.length === 0 && <p className="py-4 text-center text-sm" style={{ color: "var(--tenue)" }}>Busca y agrega prendas a la venta.</p>}

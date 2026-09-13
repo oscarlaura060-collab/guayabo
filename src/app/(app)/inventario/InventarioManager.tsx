@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { fechaHora } from "@/lib/format";
+import { fechaHora, pesos } from "@/lib/format";
 import { estadoStock } from "@/lib/prendas";
 import { ajustarStock } from "./actions";
 
@@ -21,6 +21,8 @@ export interface PrendaStock {
   stock: number;
   stock_minimo: number;
   vendidas: number;
+  precio: number;
+  costo: number;
 }
 export interface Movimiento {
   id: string;
@@ -57,6 +59,10 @@ export function InventarioManager({
   const [ocupado, setOcupado] = useState(false);
 
   const bajos = prendas.filter((p) => p.stock <= p.stock_minimo);
+  const unidades = prendas.reduce((s, p) => s + p.stock, 0);
+  const valorVenta = prendas.reduce((s, p) => s + p.stock * p.precio, 0);
+  const valorCosto = prendas.reduce((s, p) => s + p.stock * p.costo, 0);
+  const margenPot = valorVenta - valorCosto;
 
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -86,6 +92,26 @@ export function InventarioManager({
 
   return (
     <>
+      {/* Resumen del inventario */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="gy-card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Unidades en stock</div>
+          <div className="gy-cifra mt-2 text-2xl">{unidades}</div>
+        </div>
+        <div className="gy-card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Valor a precio de venta</div>
+          <div className="gy-cifra mt-2 text-2xl" style={{ color: "var(--color-secundario)" }}>{pesos(valorVenta)}</div>
+        </div>
+        <div className="gy-card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Valor a costo</div>
+          <div className="gy-cifra mt-2 text-2xl">{pesos(valorCosto)}</div>
+        </div>
+        <div className="gy-card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Margen potencial</div>
+          <div className="gy-cifra mt-2 text-2xl" style={{ color: "#3AA76D" }}>{pesos(margenPot)}</div>
+        </div>
+      </div>
+
       {bajos.length > 0 && (
         <button
           onClick={() => { setTab("stock"); setSoloBajo(true); }}
