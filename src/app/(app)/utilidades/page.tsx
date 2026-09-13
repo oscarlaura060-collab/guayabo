@@ -4,7 +4,8 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { exigirAcceso } from "@/lib/guard";
 import { createClient } from "@/lib/supabase/server";
 import { getConfig } from "@/lib/config";
-import { pesos } from "@/lib/format";
+import { pesos, fecha as fmtFecha } from "@/lib/format";
+import { RangoPersonalizado } from "./RangoPersonalizado";
 
 export const metadata = { title: "Utilidades" };
 
@@ -15,6 +16,8 @@ const PERIODOS: { clave: Periodo; label: string }[] = [
   { clave: "ano", label: "Este año" },
   { clave: "todo", label: "Todo" },
 ];
+
+const reFecha = /^\d{4}-\d{2}-\d{2}$/;
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -32,12 +35,20 @@ function rango(p: Periodo): { desde: string | null; hasta: string | null } {
 export default async function UtilidadesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ periodo?: string; desde?: string; hasta?: string }>;
 }) {
   await exigirAcceso("/utilidades");
   const sp = await searchParams;
-  const periodo = (PERIODOS.find((x) => x.clave === sp.periodo)?.clave ?? "mes") as Periodo;
-  const { desde, hasta } = rango(periodo);
+
+  // Rango personalizado si llegan desde/hasta válidos; si no, un período fijo.
+  const personalizado =
+    sp.periodo === "personalizado" && reFecha.test(sp.desde ?? "") && reFecha.test(sp.hasta ?? "");
+  const periodo = personalizado
+    ? ("personalizado" as const)
+    : ((PERIODOS.find((x) => x.clave === sp.periodo)?.clave ?? "mes") as Periodo);
+  const { desde, hasta } = personalizado
+    ? { desde: sp.desde!, hasta: sp.hasta! }
+    : rango(periodo as Periodo);
 
   const supabase = await createClient();
   const config = await getConfig().catch(() => ({}) as Record<string, string>);
@@ -78,12 +89,20 @@ export default async function UtilidadesPage({
     <>
       <PageHeader titulo="Utilidades" descripcion="Utilidad bruta y neta del período." />
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {PERIODOS.map((p) => (
-          <Link key={p.clave} href={`/utilidades?periodo=${p.clave}`} className="gy-pill" data-activo={p.clave === periodo}>
-            {p.label}
-          </Link>
-        ))}
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          {PERIODOS.map((p) => (
+            <Link key={p.clave} href={`/utilidades?periodo=${p.clave}`} className="gy-pill" data-activo={p.clave === periodo}>
+              {p.label}
+            </Link>
+          ))}
+        </div>
+        <RangoPersonalizado desde={personalizado ? desde! : ""} hasta={personalizado ? hasta! : ""} activo={personalizado} />
+        {desde && hasta && (
+          <p className="text-xs" style={{ color: "var(--tenue)" }}>
+            Mostrando del <b>{fmtFecha(desde)}</b> al <b>{fmtFecha(hasta)}</b>.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">

@@ -2,14 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, BookmarkCheck, PackageCheck, Ban, Sparkles } from "lucide-react";
+import { Plus, Search, BookmarkCheck, PackageCheck, Ban, Sparkles, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { pesos } from "@/lib/format";
+import { pesos, fecha as fmtFecha } from "@/lib/format";
 import { crearApartado, convertirAVenta, cancelarApartado } from "./actions";
+import { firmarComprobante } from "../comprobante-actions";
 
 export interface ApartadoRow {
   id: string;
@@ -19,12 +20,23 @@ export interface ApartadoRow {
   talla: string | null;
   color: string | null;
   cantidad: number;
+  precio: number;
   total: number;
   abonado: number;
   saldo: number;
   estado: string;
   disponible: boolean;
+  fecha: string | null;
   fecha_limite: string | null;
+  observaciones: string | null;
+}
+export interface AbonoRow {
+  id: string;
+  apartado_id: string;
+  fecha: string | null;
+  valor: number;
+  metodo: string | null;
+  comprobantes: string[];
 }
 export interface ClienteOpt { id: string; nombre: string }
 export interface PrendaOpt { id: string; nombre: string; precio: number; stock: number; talla: string | null; color: string | null }
@@ -36,6 +48,7 @@ export function ApartadosManager({
   apartados,
   clientes,
   prendas,
+  abonos,
   metodos,
   coloresEstado,
   puedeEscribir,
@@ -43,6 +56,7 @@ export function ApartadosManager({
   apartados: ApartadoRow[];
   clientes: ClienteOpt[];
   prendas: PrendaOpt[];
+  abonos: AbonoRow[];
   metodos: string[];
   coloresEstado: Record<string, string>;
   puedeEscribir: boolean;
@@ -51,8 +65,17 @@ export function ApartadosManager({
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
+  const [detalle, setDetalle] = useState<ApartadoRow | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [precioSugerido, setPrecioSugerido] = useState("");
+
+  const abonosDetalle = detalle ? abonos.filter((a) => a.apartado_id === detalle.id) : [];
+
+  async function verComprobante(path: string) {
+    const { url } = await firmarComprobante(path);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else toast("No se pudo abrir el comprobante", "error");
+  }
 
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -116,7 +139,7 @@ export function ApartadosManager({
         <div className="gy-table-wrap gy-card">
           <table className="gy-table">
             <thead>
-              <tr><th>Código</th><th>Cliente</th><th>Prenda</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Estado</th>{puedeEscribir && <th></th>}</tr>
+              <tr><th>Código</th><th>Cliente</th><th>Prenda</th><th>Total</th><th>Abonado</th><th>Saldo</th><th>Estado</th><th></th></tr>
             </thead>
             <tbody>
               {lista.map((a) => (
@@ -133,20 +156,21 @@ export function ApartadosManager({
                       <span className="ml-1"><StatusChip texto="Disponible" color="#3AA76D" /></span>
                     )}
                   </td>
-                  {puedeEscribir && (
-                    <td>
-                      <span className="flex justify-end gap-1">
-                        {a.estado !== "Entregado" && a.estado !== "Cancelado" && (
-                          <button className="gy-btn gy-btn-contorno !px-2 !py-1 text-sm" onClick={() => onConvertir(a)} title="Entregar (crear venta)">
-                            <PackageCheck size={14} /> Entregar
-                          </button>
-                        )}
-                        {a.estado !== "Cancelado" && a.estado !== "Entregado" && (
-                          <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => onCancelar(a)} aria-label="Cancelar"><Ban size={15} /></button>
-                        )}
-                      </span>
-                    </td>
-                  )}
+                  <td>
+                    <span className="flex justify-end gap-1">
+                      <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => setDetalle(a)} aria-label="Ver detalles" title="Ver detalles">
+                        <Eye size={15} />
+                      </button>
+                      {puedeEscribir && a.estado !== "Entregado" && a.estado !== "Cancelado" && (
+                        <button className="gy-btn gy-btn-contorno !px-2 !py-1 text-sm" onClick={() => onConvertir(a)} title="Entregar (crear venta)">
+                          <PackageCheck size={14} /> Entregar
+                        </button>
+                      )}
+                      {puedeEscribir && a.estado !== "Cancelado" && a.estado !== "Entregado" && (
+                        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => onCancelar(a)} aria-label="Cancelar"><Ban size={15} /></button>
+                      )}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -212,6 +236,81 @@ export function ApartadosManager({
           </div>
         </form>
       </Modal>
+
+      {/* Detalles del apartado */}
+      <Modal abierto={!!detalle} onClose={() => setDetalle(null)} titulo={`Apartado ${detalle?.codigo ?? ""}`}>
+        {detalle && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <StatusChip texto={detalle.estado} color={coloresEstado[detalle.estado]} />
+              {detalle.disponible && detalle.estado !== "Entregado" && detalle.estado !== "Cancelado" && (
+                <StatusChip texto="Disponible" color="#3AA76D" />
+              )}
+            </div>
+
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+              <Dato etiqueta="Cliente" valor={detalle.cliente_nombre ?? "—"} />
+              <Dato etiqueta="Prenda" valor={`${detalle.prenda_nombre ?? "—"}${[detalle.talla, detalle.color].filter(Boolean).length ? " · " + [detalle.talla, detalle.color].filter(Boolean).join(" · ") : ""}`} />
+              <Dato etiqueta="Cantidad" valor={String(detalle.cantidad)} />
+              <Dato etiqueta="Precio unitario" valor={pesos(detalle.precio)} />
+              <Dato etiqueta="Total" valor={pesos(detalle.total)} />
+              <Dato etiqueta="Abonado" valor={pesos(detalle.abonado)} />
+              <Dato etiqueta="Saldo" valor={pesos(detalle.saldo)} acento={detalle.saldo > 0 ? "#D33A2C" : "#3AA76D"} />
+              <Dato etiqueta="Fecha" valor={fmtFecha(detalle.fecha)} />
+              <Dato etiqueta="Fecha límite" valor={detalle.fecha_limite ? fmtFecha(detalle.fecha_limite) : "—"} />
+            </dl>
+
+            {detalle.observaciones && (
+              <div className="text-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Observaciones</div>
+                <p className="mt-1">{detalle.observaciones}</p>
+              </div>
+            )}
+
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>
+                Abonos ({abonosDetalle.length})
+              </div>
+              {abonosDetalle.length === 0 ? (
+                <p className="text-sm" style={{ color: "var(--tenue)" }}>Sin abonos registrados.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {abonosDetalle.map((ab) => (
+                    <div key={ab.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-2 text-sm" style={{ borderColor: "var(--borde-suave)" }}>
+                      <span style={{ color: "var(--tenue)" }}>{fmtFecha(ab.fecha)}</span>
+                      <span>{ab.metodo ?? "—"}</span>
+                      <span className="font-semibold tabular-nums">{pesos(ab.valor)}</span>
+                      {ab.comprobantes.length > 0 && (
+                        <button onClick={() => verComprobante(ab.comprobantes[0])} className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
+                          <FileText size={14} /> comprobante
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap justify-end gap-2">
+              {puedeEscribir && detalle.estado !== "Entregado" && detalle.estado !== "Cancelado" && (
+                <Button variante="contorno" onClick={() => { const a = detalle; setDetalle(null); onConvertir(a); }}>
+                  <PackageCheck size={15} /> Entregar
+                </Button>
+              )}
+              <Button variante="plano" onClick={() => setDetalle(null)}>Cerrar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
+  );
+}
+
+function Dato({ etiqueta, valor, acento }: { etiqueta: string; valor: string; acento?: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>{etiqueta}</dt>
+      <dd className="mt-0.5 font-medium" style={{ color: acento }}>{valor}</dd>
+    </div>
   );
 }

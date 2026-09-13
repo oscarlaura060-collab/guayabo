@@ -40,6 +40,8 @@ export function GastosManager({
   const { toast } = useToast();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
   const [modal, setModal] = useState<{ abierto: boolean; gasto: GastoRow | null }>({ abierto: false, gasto: null });
   const [comp, setComp] = useState<GastoRow | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -48,10 +50,12 @@ export function GastosManager({
     const t = q.trim().toLowerCase();
     return gastos.filter((g) => {
       if (filtro && g.categoria !== filtro) return false;
+      if (desde && g.fecha < desde) return false;
+      if (hasta && g.fecha > hasta) return false;
       if (!t) return true;
       return [g.descripcion, g.categoria, g.metodo].filter(Boolean).some((x) => String(x).toLowerCase().includes(t));
     });
-  }, [gastos, q, filtro]);
+  }, [gastos, q, filtro, desde, hasta]);
 
   const total = lista.reduce((s, g) => s + g.valor, 0);
   const porCategoria = useMemo(() => {
@@ -125,6 +129,19 @@ export function GastosManager({
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar gasto…"
             className="w-full rounded-full border bg-[var(--color-tarjeta)] py-2 pl-9 pr-3 text-sm outline-none" style={{ borderColor: "var(--borde-suave)" }} />
         </label>
+        <label className="flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }}>
+          Desde
+          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} max={hasta || undefined}
+            className="rounded-xl border bg-[var(--color-tarjeta)] px-2 py-1.5 text-sm outline-none" style={{ borderColor: "var(--borde-suave)", color: "var(--color-texto)" }} />
+        </label>
+        <label className="flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }}>
+          Hasta
+          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} min={desde || undefined}
+            className="rounded-xl border bg-[var(--color-tarjeta)] px-2 py-1.5 text-sm outline-none" style={{ borderColor: "var(--borde-suave)", color: "var(--color-texto)" }} />
+        </label>
+        {(desde || hasta) && (
+          <button className="text-sm underline" style={{ color: "var(--tenue)" }} onClick={() => { setDesde(""); setHasta(""); }}>Limpiar fechas</button>
+        )}
         {puedeEscribir && <Button onClick={() => setModal({ abierto: true, gasto: null })}><Plus size={17} /> Nuevo gasto</Button>}
       </div>
 
