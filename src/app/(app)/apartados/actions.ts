@@ -57,6 +57,14 @@ export async function crearApartado(formData: FormData): Promise<Resultado> {
     const { data: codigo, error: errCod } = await supabase.rpc("siguiente_consecutivo", { p_entidad: "APARTADO" });
     if (errCod) throw new Error(errCod.message);
 
+    // Si se eligió un cliente de la lista pero no se escribió nombre, lo tomamos
+    // de su ficha para que el listado siempre muestre a quién pertenece.
+    let clienteNombre = v.cliente_nombre?.trim() || null;
+    if (!clienteNombre && v.cliente_id) {
+      const { data: cli } = await supabase.from("clientes").select("nombre").eq("id", v.cliente_id).single();
+      clienteNombre = cli?.nombre ?? null;
+    }
+
     const total = v.precio * v.cantidad;
     const abonado = Math.min(v.abono, total);
     const saldo = Math.max(total - abonado, 0);
@@ -66,7 +74,7 @@ export async function crearApartado(formData: FormData): Promise<Resultado> {
       .insert({
         codigo,
         cliente_id: v.cliente_id ?? null,
-        cliente_nombre: v.cliente_nombre ?? null,
+        cliente_nombre: clienteNombre,
         prenda_id: v.prenda_id,
         prenda_nombre: prenda.nombre,
         talla: prenda.talla,
@@ -92,7 +100,7 @@ export async function crearApartado(formData: FormData): Promise<Resultado> {
         codigo: codPago,
         apartado_id: apartado.id,
         cliente_id: v.cliente_id ?? null,
-        cliente_nombre: v.cliente_nombre ?? null,
+        cliente_nombre: clienteNombre,
         fecha: new Date().toISOString().slice(0, 10),
         valor: abonado,
         metodo: v.metodo || "Efectivo",
