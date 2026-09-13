@@ -14,7 +14,7 @@ export default async function LoginPage() {
     <main className="grid min-h-dvh place-items-center p-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <BrandLogo nombre={nombre} />
+          <BrandLogo nombre={nombre} logoUrl={config.LOGO_URL || null} />
           {lema && (
             <p className="text-sm italic" style={{ color: "var(--tenue)" }}>
               {lema}

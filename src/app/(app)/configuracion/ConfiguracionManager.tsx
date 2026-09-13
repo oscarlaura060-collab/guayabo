@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
-import { guardarConfig, actualizarPerfil, crearUsuario } from "./actions";
+import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo } from "./actions";
 
 export interface ConfigRow {
   clave: string;
@@ -68,6 +68,16 @@ export function ConfiguracionManager({
     () => config.filter((c) => valores[c.clave] !== c.valor).map((c) => c.clave),
     [config, valores],
   );
+
+  const [subiendoLogo, setSubiendoLogo] = useState(false);
+  async function onLogo(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubiendoLogo(true);
+    const res = await subirLogo(new FormData(e.currentTarget));
+    setSubiendoLogo(false);
+    if (res.ok) { toast("Logo actualizado", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
 
   async function onGuardar() {
     if (cambios.length === 0) {
@@ -160,6 +170,24 @@ export function ConfiguracionManager({
 
       {tab === "general" && (
         <>
+          {/* Logo de la marca */}
+          <div className="gy-card mb-4 p-4">
+            <div className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Logo de la marca</div>
+            <div className="flex flex-wrap items-center gap-4">
+              {valores.LOGO_URL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={valores.LOGO_URL} alt="Logo" className="h-16 w-16 rounded-xl object-contain" style={{ background: "var(--color-primario)" }} />
+              ) : (
+                <div className="grid h-16 w-16 place-items-center rounded-xl text-xl font-bold" style={{ background: "var(--color-secundario)", color: "#fff" }}>G</div>
+              )}
+              <form onSubmit={onLogo} className="flex flex-wrap items-center gap-2">
+                <input className={inputCls} style={inputStyle} name="logo" type="file" accept="image/*" required />
+                <Button type="submit" disabled={subiendoLogo}>{subiendoLogo ? "Subiendo…" : "Subir logo"}</Button>
+              </form>
+            </div>
+            <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Aparece en el menú y en la pantalla de entrada. Usa un PNG o JPG cuadrado.</p>
+          </div>
+
           <div className="mb-3 flex items-center justify-end gap-3">
             {cambios.length > 0 && (
               <span className="text-sm" style={{ color: "var(--tenue)" }}>{cambios.length} cambio(s) sin guardar</span>

@@ -26,7 +26,12 @@ export default async function AppLayout({
 
   return (
     <ToastProvider>
-      <Shell nombreMarca={config.NOMBRE_MARCA || "GUAYABO"} rol={rol} usuario={usuario}>
+      <Shell
+        nombreMarca={config.NOMBRE_MARCA || "GUAYABO"}
+        logoUrl={config.LOGO_URL || null}
+        rol={rol}
+        usuario={usuario}
+      >
         {children}
       </Shell>
     </ToastProvider>
