@@ -12,12 +12,13 @@ import { useRouter } from "next/navigation";
 
 interface ShellProps {
   nombreMarca: string;
+  logoUrl?: string | null;
   rol: Rol;
   usuario: { nombre: string; email: string };
   children: ReactNode;
 }
 
-export function Shell({ nombreMarca, rol, usuario, children }: ShellProps) {
+export function Shell({ nombreMarca, logoUrl, rol, usuario, children }: ShellProps) {
   const [abierto, setAbierto] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -59,7 +60,7 @@ export function Shell({ nombreMarca, rol, usuario, children }: ShellProps) {
         style={{ background: "var(--color-primario)" }}
       >
         <div className="px-2 pt-2">
-          <BrandLogo nombre={nombreMarca} />
+          <BrandLogo nombre={nombreMarca} logoUrl={logoUrl} />
         </div>
         <div className="overflow-y-auto pr-1">{menu}</div>
       </aside>
@@ -77,7 +78,7 @@ export function Shell({ nombreMarca, rol, usuario, children }: ShellProps) {
             style={{ background: "var(--color-primario)" }}
           >
             <div className="flex items-center justify-between px-2 pt-2">
-              <BrandLogo nombre={nombreMarca} />
+              <BrandLogo nombre={nombreMarca} logoUrl={logoUrl} />
               <button
                 className="gy-btn gy-btn-plano !p-2"
                 onClick={() => setAbierto(false)}

@@ -32,6 +32,26 @@ export async function guardarConfig(valores: Record<string, string>): Promise<Re
   }
 }
 
+/** Sube el logo de la marca (bucket público) y guarda su URL en config.LOGO_URL. */
+export async function subirLogo(formData: FormData): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const archivo = formData.get("logo");
+  if (!(archivo instanceof File) || archivo.size === 0) return { ok: false, error: "Elige una imagen." };
+  const supabase = await createClient();
+  const ext = (archivo.name.split(".").pop() || "png").toLowerCase();
+  const path = `marca/logo-${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("prendas")
+    .upload(path, archivo, { contentType: archivo.type || "image/png", upsert: false });
+  if (error) return { ok: false, error: error.message };
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/prendas/${path}`;
+  const { error: e2 } = await supabase.from("config").update({ valor: url }).eq("clave", "LOGO_URL");
+  if (e2) return { ok: false, error: e2.message };
+  revalidatePath("/", "layout");
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
 const ROLES = ["ADMINISTRADOR", "VENDEDOR", "CONSULTA"] as const;
 
 /** Actualiza rol/estado/nombre de un perfil. */
