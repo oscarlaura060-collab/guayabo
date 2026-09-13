@@ -1,31 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 
-const MSJ_SIN_PERFIL =
-  "Tu cuenta no tiene un perfil activo. Pide a un administrador que te active antes de entrar.";
+/** Cuenta compartida de la app: el usuario solo escribe la clave de acceso. */
+const CUENTA_COMPARTIDA = "acceso@guayabo.app";
 
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const redirect = params.get("redirect") || "/dashboard";
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(
-    params.get("error") === "sin-perfil" ? MSJ_SIN_PERFIL : null,
-  );
-
-  // Si llegamos aquí por "sin perfil activo", cerramos la sesión que quedó abierta.
-  useEffect(() => {
-    if (params.get("error") === "sin-perfil") {
-      createClient().auth.signOut();
-    }
-  }, [params]);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,27 +23,13 @@ export function LoginForm() {
     setCargando(true);
     const supabase = createClient();
 
-    const { data, error: errAuth } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
+    const { error: errAuth } = await supabase.auth.signInWithPassword({
+      email: CUENTA_COMPARTIDA,
+      password: clave,
     });
 
-    if (errAuth || !data.user) {
-      setError("Correo o contraseña incorrectos.");
-      setCargando(false);
-      return;
-    }
-
-    // Verifica que el perfil exista y esté activo; si no, salida con mensaje claro.
-    const { data: perfil } = await supabase
-      .from("perfiles")
-      .select("activo")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (!perfil || !perfil.activo) {
-      await supabase.auth.signOut();
-      setError(MSJ_SIN_PERFIL);
+    if (errAuth) {
+      setError("Clave incorrecta.");
       setCargando(false);
       return;
     }
@@ -65,26 +41,15 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Correo
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2.5 outline-none"
-          style={{ borderColor: "var(--borde-suave)" }}
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Contraseña
+        Clave de acceso
         <input
           type="password"
           required
+          autoFocus
           autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2.5 outline-none"
+          value={clave}
+          onChange={(e) => setClave(e.target.value)}
+          className="rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2.5 text-center text-lg tracking-widest outline-none"
           style={{ borderColor: "var(--borde-suave)" }}
         />
       </label>
@@ -92,10 +57,7 @@ export function LoginForm() {
       {error && (
         <p
           className="rounded-xl px-3 py-2 text-sm"
-          style={{
-            background: "color-mix(in srgb, #d33a2c 10%, transparent)",
-            color: "#b02a1f",
-          }}
+          style={{ background: "color-mix(in srgb, #d33a2c 10%, transparent)", color: "#b02a1f" }}
           role="alert"
         >
           {error}
