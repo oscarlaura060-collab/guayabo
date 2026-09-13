@@ -10,6 +10,7 @@ import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fecha as fmtFecha, hoyBogota } from "@/lib/format";
 import { registrarPago, subirComprobante, anularPago } from "./actions";
+import { firmarComprobante } from "../comprobante-actions";
 
 export interface PagoRow {
   id: string;
@@ -20,8 +21,7 @@ export interface PagoRow {
   tipo_pago: string | null;
   valor: number;
   observaciones: string | null;
-  comprobanteUrl: string | null;
-  tieneComprobante: boolean;
+  comprobantePath: string | null;
 }
 export interface PedidoPendiente {
   id: string;
@@ -110,6 +110,13 @@ export function PagosManager({
     }
   }
 
+  async function onVer(path: string) {
+    toast("Abriendo comprobante…", "info");
+    const { url } = await firmarComprobante(path);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else toast("No se pudo abrir el comprobante", "error");
+  }
+
   async function onAnular(p: PagoRow) {
     if (!confirm(`¿Anular el pago de ${pesos(p.valor)} de ${p.cliente_nombre ?? "—"}? Se recalculará el saldo.`)) return;
     const res = await anularPago(p.id);
@@ -192,10 +199,10 @@ export function PagosManager({
                   <td><span className="text-xs" style={{ color: "var(--tenue)" }}>{p.tipo_pago ?? "—"}</span></td>
                   <td className="num font-semibold">{pesos(p.valor)}</td>
                   <td>
-                    {p.comprobanteUrl ? (
-                      <a href={p.comprobanteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
+                    {p.comprobantePath ? (
+                      <button onClick={() => onVer(p.comprobantePath!)} className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
                         <FileText size={15} /> Ver
-                      </a>
+                      </button>
                     ) : puedeEscribir ? (
                       <button className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }} onClick={() => setSubirEn(p.id)}>
                         <Upload size={14} /> Subir

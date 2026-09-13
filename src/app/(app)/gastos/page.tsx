@@ -20,24 +20,16 @@ export default async function GastosPage() {
     getListas("METODO_PAGO"),
   ]);
 
-  const rows: GastoRow[] = [];
-  for (const g of gastos ?? []) {
-    let comprobanteUrl: string | null = null;
-    if (g.comprobante_path) {
-      const { data } = await supabase.storage.from("comprobantes").createSignedUrl(g.comprobante_path, 3600);
-      comprobanteUrl = data?.signedUrl ?? null;
-    }
-    rows.push({
-      id: g.id,
-      fecha: g.fecha,
-      categoria: g.categoria,
-      descripcion: g.descripcion,
-      valor: Number(g.valor),
-      metodo: g.metodo,
-      observaciones: g.observaciones,
-      comprobanteUrl,
-    });
-  }
+  const rows: GastoRow[] = (gastos ?? []).map((g) => ({
+    id: g.id,
+    fecha: g.fecha,
+    categoria: g.categoria,
+    descripcion: g.descripcion,
+    valor: Number(g.valor),
+    metodo: g.metodo,
+    observaciones: g.observaciones,
+    comprobantePath: g.comprobante_path,
+  }));
 
   return (
     <>

@@ -25,18 +25,10 @@ export default async function PagosPage() {
     getSesion(),
   ]);
 
-  // URLs firmadas para los comprobantes en el bucket privado.
-  const rows: PagoRow[] = [];
-  for (const p of pagos ?? []) {
-    let comprobanteUrl: string | null = null;
-    if (p.comprobante_path) {
-      const { data } = await supabase.storage
-        .from("comprobantes")
-        .createSignedUrl(p.comprobante_path, 3600);
-      comprobanteUrl = data?.signedUrl ?? null;
-    }
+  // El comprobante se firma bajo demanda (al tocar "Ver"), no al cargar la página.
+  const rows: PagoRow[] = (pagos ?? []).map((p) => {
     const pedido = p.pedidos as { numero: string | null } | null;
-    rows.push({
+    return {
       id: p.id,
       fecha: p.fecha,
       cliente_nombre: p.cliente_nombre,
@@ -45,10 +37,9 @@ export default async function PagosPage() {
       tipo_pago: p.tipo_pago,
       valor: Number(p.valor),
       observaciones: p.observaciones,
-      comprobanteUrl,
-      tieneComprobante: !!p.comprobante_path,
-    });
-  }
+      comprobantePath: p.comprobante_path,
+    };
+  });
 
   const rol = rolDe(sesion);
   const puedeEscribir = rol === "ADMINISTRADOR" || rol === "VENDEDOR";
