@@ -12,7 +12,7 @@ export default async function GastosPage() {
   const [{ data: gastos }, categorias, metodos] = await Promise.all([
     supabase
       .from("gastos")
-      .select("id, fecha, categoria, descripcion, valor, metodo, observaciones, comprobante_path")
+      .select("id, fecha, categoria, descripcion, valor, metodo, observaciones, comprobantes")
       .eq("activo", true)
       .order("fecha", { ascending: false })
       .limit(300),
@@ -28,7 +28,7 @@ export default async function GastosPage() {
     valor: Number(g.valor),
     metodo: g.metodo,
     observaciones: g.observaciones,
-    comprobantePath: g.comprobante_path,
+    comprobantes: g.comprobantes ?? [],
   }));
 
   return (

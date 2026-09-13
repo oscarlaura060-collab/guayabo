@@ -11,7 +11,7 @@ export default async function PagosPage() {
   const [{ data: pagos }, { data: pendientes }, metodosLista, sesion] = await Promise.all([
     supabase
       .from("pagos")
-      .select("id, fecha, cliente_nombre, metodo, tipo_pago, valor, observaciones, comprobante_path, pedido_id, pedidos(numero)")
+      .select("id, fecha, cliente_nombre, metodo, tipo_pago, valor, observaciones, comprobantes, pedido_id, pedidos(numero)")
       .eq("activo", true)
       .order("fecha", { ascending: false })
       .limit(300),
@@ -37,7 +37,7 @@ export default async function PagosPage() {
       tipo_pago: p.tipo_pago,
       valor: Number(p.valor),
       observaciones: p.observaciones,
-      comprobantePath: p.comprobante_path,
+      comprobantes: p.comprobantes ?? [],
     };
   });
 

@@ -254,12 +254,13 @@ export type Database = {
           activo: boolean
           categoria: string | null
           codigo: string | null
+          comprobante_path: string | null
+          comprobantes: string[]
           created_at: string
           descripcion: string | null
           fecha: string
           id: string
           legacy_id: string | null
-          comprobante_path: string | null
           metodo: string | null
           observaciones: string | null
           valor: number
@@ -268,12 +269,13 @@ export type Database = {
           activo?: boolean
           categoria?: string | null
           codigo?: string | null
+          comprobante_path?: string | null
+          comprobantes?: string[]
           created_at?: string
           descripcion?: string | null
           fecha?: string
           id?: string
           legacy_id?: string | null
-          comprobante_path?: string | null
           metodo?: string | null
           observaciones?: string | null
           valor?: number
@@ -282,12 +284,13 @@ export type Database = {
           activo?: boolean
           categoria?: string | null
           codigo?: string | null
+          comprobante_path?: string | null
+          comprobantes?: string[]
           created_at?: string
           descripcion?: string | null
           fecha?: string
           id?: string
           legacy_id?: string | null
-          comprobante_path?: string | null
           metodo?: string | null
           observaciones?: string | null
           valor?: number
@@ -392,6 +395,7 @@ export type Database = {
           cliente_nombre: string | null
           codigo: string | null
           comprobante_path: string | null
+          comprobantes: string[]
           created_at: string
           fecha: string
           id: string
@@ -409,6 +413,7 @@ export type Database = {
           cliente_nombre?: string | null
           codigo?: string | null
           comprobante_path?: string | null
+          comprobantes?: string[]
           created_at?: string
           fecha?: string
           id?: string
@@ -426,6 +431,7 @@ export type Database = {
           cliente_nombre?: string | null
           codigo?: string | null
           comprobante_path?: string | null
+          comprobantes?: string[]
           created_at?: string
           fecha?: string
           id?: string
@@ -542,16 +548,14 @@ export type Database = {
           envio: number
           est_pago: string
           estado: string
-          fecha_envio: string | null
-          guia: string | null
-          notificado_envio: boolean
-          transportadora: string | null
-          url_rastreo: string | null
           extra: Json
           fecha: string
           fecha_entrega: string | null
+          fecha_envio: string | null
+          guia: string | null
           id: string
           legacy_id: string | null
+          notificado_envio: boolean
           numero: string | null
           observaciones: string | null
           pagado: number
@@ -559,6 +563,8 @@ export type Database = {
           subtotal: number
           tipo: string
           total: number
+          transportadora: string | null
+          url_rastreo: string | null
           utilidad: number
         }
         Insert: {
@@ -572,16 +578,14 @@ export type Database = {
           envio?: number
           est_pago?: string
           estado?: string
-          fecha_envio?: string | null
-          guia?: string | null
-          notificado_envio?: boolean
-          transportadora?: string | null
-          url_rastreo?: string | null
           extra?: Json
           fecha?: string
           fecha_entrega?: string | null
+          fecha_envio?: string | null
+          guia?: string | null
           id?: string
           legacy_id?: string | null
+          notificado_envio?: boolean
           numero?: string | null
           observaciones?: string | null
           pagado?: number
@@ -589,6 +593,8 @@ export type Database = {
           subtotal?: number
           tipo?: string
           total?: number
+          transportadora?: string | null
+          url_rastreo?: string | null
           utilidad?: number
         }
         Update: {
@@ -602,16 +608,14 @@ export type Database = {
           envio?: number
           est_pago?: string
           estado?: string
-          fecha_envio?: string | null
-          guia?: string | null
-          notificado_envio?: boolean
-          transportadora?: string | null
-          url_rastreo?: string | null
           extra?: Json
           fecha?: string
           fecha_entrega?: string | null
+          fecha_envio?: string | null
+          guia?: string | null
           id?: string
           legacy_id?: string | null
+          notificado_envio?: boolean
           numero?: string | null
           observaciones?: string | null
           pagado?: number
@@ -619,6 +623,8 @@ export type Database = {
           subtotal?: number
           tipo?: string
           total?: number
+          transportadora?: string | null
+          url_rastreo?: string | null
           utilidad?: number
         }
         Relationships: [

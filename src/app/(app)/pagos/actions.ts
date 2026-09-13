@@ -15,18 +15,22 @@ export interface Resultado {
   error?: string;
 }
 
-async function subirComprobanteArchivo(
+async function subirComprobanteArchivos(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  archivo: FormDataEntryValue | null,
-): Promise<string | null> {
-  if (!(archivo instanceof File) || archivo.size === 0) return null;
-  const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();
-  const path = `${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("comprobantes")
-    .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
-  if (error) throw new Error(`No se pudo subir el comprobante: ${error.message}`);
-  return path;
+  archivos: FormDataEntryValue[],
+): Promise<string[]> {
+  const paths: string[] = [];
+  for (const archivo of archivos) {
+    if (!(archivo instanceof File) || archivo.size === 0) continue;
+    const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `pagos/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
+    if (error) throw new Error(`No se pudo subir el comprobante: ${error.message}`);
+    paths.push(path);
+  }
+  return paths;
 }
 
 const pagoSchema = z.object({
@@ -65,7 +69,7 @@ export async function registrarPago(formData: FormData): Promise<Resultado> {
     });
     if (errCodigo) throw new Error(errCodigo.message);
 
-    const comprobante_path = await subirComprobanteArchivo(supabase, formData.get("comprobante"));
+    const comprobantes = await subirComprobanteArchivos(supabase, formData.getAll("comprobante"));
 
     const { error } = await supabase.from("pagos").insert({
       codigo,
@@ -76,7 +80,7 @@ export async function registrarPago(formData: FormData): Promise<Resultado> {
       valor: v.valor,
       metodo: v.metodo,
       tipo_pago: "ABONO",
-      comprobante_path,
+      comprobantes,
       observaciones: v.observaciones || null,
     });
     if (error) throw new Error(error.message);
@@ -90,20 +94,35 @@ export async function registrarPago(formData: FormData): Promise<Resultado> {
   }
 }
 
-/** Sube o reemplaza el comprobante de un pago existente. */
+/** Agrega uno o varios comprobantes a un pago existente. */
 export async function subirComprobante(pagoId: string, formData: FormData): Promise<Resultado> {
   if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
   const supabase = await createClient();
   try {
-    const path = await subirComprobanteArchivo(supabase, formData.get("comprobante"));
-    if (!path) return { ok: false, error: "Elige un archivo." };
-    const { error } = await supabase.from("pagos").update({ comprobante_path: path }).eq("id", pagoId);
+    const nuevos = await subirComprobanteArchivos(supabase, formData.getAll("comprobante"));
+    if (nuevos.length === 0) return { ok: false, error: "Elige al menos un archivo." };
+    const { data: pago } = await supabase.from("pagos").select("comprobantes").eq("id", pagoId).single();
+    const comprobantes = [...(pago?.comprobantes ?? []), ...nuevos];
+    const { error } = await supabase.from("pagos").update({ comprobantes }).eq("id", pagoId);
     if (error) throw new Error(error.message);
     revalidatePath("/pagos");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al subir el comprobante" };
   }
+}
+
+/** Elimina un comprobante de un pago (lo quita de la lista y del almacenamiento). */
+export async function eliminarComprobante(pagoId: string, path: string): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+  const supabase = await createClient();
+  const { data: pago } = await supabase.from("pagos").select("comprobantes").eq("id", pagoId).single();
+  const comprobantes = (pago?.comprobantes ?? []).filter((p) => p !== path);
+  const { error } = await supabase.from("pagos").update({ comprobantes }).eq("id", pagoId);
+  if (error) return { ok: false, error: error.message };
+  await supabase.storage.from("comprobantes").remove([path]);
+  revalidatePath("/pagos");
+  return { ok: true };
 }
 
 /** Anula un pago (activo = false). El trigger recalcula el pedido. */
