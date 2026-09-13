@@ -10,7 +10,7 @@ export default async function InventarioPage() {
   const [{ data: prendas }, { data: movimientos }, sesion] = await Promise.all([
     supabase
       .from("prendas")
-      .select("id, codigo, nombre, talla, color, stock, stock_minimo, vendidas")
+      .select("id, codigo, nombre, talla, color, stock, stock_minimo, vendidas, precio, costo")
       .eq("activo", true)
       .order("nombre", { ascending: true }),
     supabase

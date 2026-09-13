@@ -20,7 +20,7 @@ export default async function NuevaVentaPage() {
     supabase.from("clientes").select("id, nombre, codigo").eq("activo", true).order("nombre"),
     supabase
       .from("prendas")
-      .select("id, nombre, codigo, talla, color, precio, costo, stock")
+      .select("id, nombre, codigo, categoria, talla, color, precio, costo, stock, imagen_path, extra")
       .eq("activo", true)
       .order("nombre"),
     getListas("METODO_PAGO"),

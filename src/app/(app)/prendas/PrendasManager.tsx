@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Pencil, Archive, Shirt } from "lucide-react";
+import { Plus, Search, Pencil, Archive, Shirt, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -29,9 +29,10 @@ export function PrendasManager({
   const router = useRouter();
   const { toast } = useToast();
   const [q, setQ] = useState("");
-  const [modal, setModal] = useState<{ abierto: boolean; prenda: Prenda | null }>({
+  const [modal, setModal] = useState<{ abierto: boolean; prenda: Prenda | null; esEdicion: boolean }>({
     abierto: false,
     prenda: null,
+    esEdicion: false,
   });
 
   const lista = useMemo(() => {
@@ -45,16 +46,25 @@ export function PrendasManager({
   }, [prendas, q]);
 
   async function onGuardar(fd: FormData) {
-    const res = modal.prenda
+    const res = modal.esEdicion && modal.prenda
       ? await actualizarPrenda(modal.prenda.id, fd)
       : await crearPrenda(fd);
     if (res.ok) {
-      toast(modal.prenda ? "Prenda actualizada" : "Prenda creada", "exito");
-      setModal({ abierto: false, prenda: null });
+      toast(modal.esEdicion ? "Prenda actualizada" : "Prenda creada", "exito");
+      setModal({ abierto: false, prenda: null, esEdicion: false });
       router.refresh();
     } else {
       toast(res.error ?? "Ocurrió un error", "error");
     }
+  }
+
+  function duplicar(p: Prenda) {
+    // Prefill como prenda nueva: conserva datos, sin foto y con stock en 0.
+    setModal({
+      abierto: true,
+      esEdicion: false,
+      prenda: { ...p, id: "", stock: 0, imagen_path: null, extra: {} },
+    });
   }
 
   async function onDesactivar(p: Prenda) {
@@ -82,7 +92,7 @@ export function PrendasManager({
           />
         </label>
         {puedeEscribir && (
-          <Button onClick={() => setModal({ abierto: true, prenda: null })}>
+          <Button onClick={() => setModal({ abierto: true, prenda: null, esEdicion: false })}>
             <Plus size={17} /> Nueva prenda
           </Button>
         )}
@@ -95,7 +105,7 @@ export function PrendasManager({
           descripcion={q ? "Prueba con otra búsqueda." : "Crea tu primera prenda con su foto y desglose de costos."}
           accion={
             puedeEscribir && !q ? (
-              <Button onClick={() => setModal({ abierto: true, prenda: null })}>
+              <Button onClick={() => setModal({ abierto: true, prenda: null, esEdicion: false })}>
                 <Plus size={17} /> Nueva prenda
               </Button>
             ) : undefined
@@ -138,11 +148,19 @@ export function PrendasManager({
                       <span className="flex gap-1">
                         <button
                           className="gy-btn gy-btn-plano !p-1.5"
-                          onClick={() => setModal({ abierto: true, prenda: p })}
+                          onClick={() => setModal({ abierto: true, prenda: p, esEdicion: true })}
                           aria-label="Editar"
                           title="Editar"
                         >
                           <Pencil size={15} />
+                        </button>
+                        <button
+                          className="gy-btn gy-btn-plano !p-1.5"
+                          onClick={() => duplicar(p)}
+                          aria-label="Duplicar"
+                          title="Duplicar"
+                        >
+                          <Copy size={15} />
                         </button>
                         <button
                           className="gy-btn gy-btn-plano !p-1.5"
@@ -164,14 +182,15 @@ export function PrendasManager({
 
       <Modal
         abierto={modal.abierto}
-        onClose={() => setModal({ abierto: false, prenda: null })}
-        titulo={modal.prenda ? "Editar prenda" : "Nueva prenda"}
+        onClose={() => setModal({ abierto: false, prenda: null, esEdicion: false })}
+        titulo={modal.esEdicion ? "Editar prenda" : modal.prenda ? "Duplicar prenda" : "Nueva prenda"}
       >
         <PrendaForm
           prenda={modal.prenda}
           catalogos={catalogos}
+          esEdicion={modal.esEdicion}
           onGuardar={onGuardar}
-          onCancelar={() => setModal({ abierto: false, prenda: null })}
+          onCancelar={() => setModal({ abierto: false, prenda: null, esEdicion: false })}
         />
       </Modal>
     </>
