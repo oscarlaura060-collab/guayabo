@@ -9,6 +9,7 @@ import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fecha as fmtFecha, hoyBogota } from "@/lib/format";
 import { crearGasto, actualizarGasto, desactivarGasto, subirComprobanteGasto } from "./actions";
+import { firmarComprobante } from "../comprobante-actions";
 
 export interface GastoRow {
   id: string;
@@ -18,7 +19,7 @@ export interface GastoRow {
   valor: number;
   metodo: string | null;
   observaciones: string | null;
-  comprobanteUrl: string | null;
+  comprobantePath: string | null;
 }
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
@@ -82,6 +83,13 @@ export function GastosManager({
     else toast(res.error ?? "Error", "error");
   }
 
+  async function onVer(path: string) {
+    toast("Abriendo comprobante…", "info");
+    const { url } = await firmarComprobante(path);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else toast("No se pudo abrir el comprobante", "error");
+  }
+
   async function onBorrar(g: GastoRow) {
     if (!confirm("¿Eliminar este gasto?")) return;
     const res = await desactivarGasto(g.id);
@@ -132,10 +140,10 @@ export function GastosManager({
                   <td>{x.metodo ?? "—"}</td>
                   <td className="num font-semibold">{pesos(x.valor)}</td>
                   <td>
-                    {x.comprobanteUrl ? (
-                      <a href={x.comprobanteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
+                    {x.comprobantePath ? (
+                      <button onClick={() => onVer(x.comprobantePath!)} className="inline-flex items-center gap-1" style={{ color: "var(--color-secundario)" }}>
                         <FileText size={15} /> Ver
-                      </a>
+                      </button>
                     ) : puedeEscribir ? (
                       <button className="inline-flex items-center gap-1 text-sm" style={{ color: "var(--tenue)" }} onClick={() => setSubirEn(x.id)}>
                         <Upload size={14} /> Subir
@@ -189,7 +197,7 @@ export function GastosManager({
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Comprobante {g?.comprobanteUrl && <span style={{ color: "var(--tenue)" }}>(ya tiene uno; subir reemplaza)</span>}
+            Comprobante {g?.comprobantePath && <span style={{ color: "var(--tenue)" }}>(ya tiene uno; subir reemplaza)</span>}
             <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" />
           </label>
           <label className="flex flex-col gap-1 text-sm font-medium">
