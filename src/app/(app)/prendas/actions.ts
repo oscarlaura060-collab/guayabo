@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { TablesUpdate } from "@/types/database.types";
+import type { TablesUpdate, Json } from "@/types/database.types";
 
 const costoSchema = z.object({
   nombre: z.string().min(1),
@@ -17,12 +17,35 @@ const prendaSchema = z.object({
   color: z.string().trim().optional().nullable(),
   descripcion: z.string().trim().optional().nullable(),
   observaciones: z.string().trim().optional().nullable(),
+  composicion: z.string().trim().optional().nullable(),
   precio: z.coerce.number().min(0),
   stock: z.coerce.number().int().min(0),
   stock_minimo: z.coerce.number().int().min(0),
   destacado: z.coerce.boolean().default(false),
   costos: z.array(costoSchema).default([]),
 });
+
+/** Limpia el jsonb de medidas que llega del formulario. */
+function parseMedidas(raw: FormDataEntryValue | null): Record<string, unknown> {
+  if (typeof raw !== "string" || !raw) return {};
+  try {
+    const o = JSON.parse(raw);
+    if (!o || typeof o !== "object") return {};
+    const columnas = Array.isArray(o.columnas) ? o.columnas.filter((x: unknown) => typeof x === "string" && x.trim()).map((x: string) => x.trim()) : [];
+    const filas = Array.isArray(o.filas)
+      ? o.filas
+          .map((f: { label?: unknown; valores?: unknown }) => ({
+            label: typeof f?.label === "string" ? f.label.trim() : "",
+            valores: Array.isArray(f?.valores) ? f.valores.map((v: unknown) => String(v ?? "").trim()) : [],
+          }))
+          .filter((f: { label: string }) => f.label)
+      : [];
+    if (!columnas.length || !filas.length) return {};
+    return { nota: typeof o.nota === "string" && o.nota.trim() ? o.nota.trim() : "Medidas en cm", columnas, filas };
+  } catch {
+    return {};
+  }
+}
 
 export interface ResultadoAccion {
   ok: boolean;
@@ -47,6 +70,7 @@ function leer(formData: FormData) {
     color: formData.get("color"),
     descripcion: formData.get("descripcion"),
     observaciones: formData.get("observaciones"),
+    composicion: formData.get("composicion"),
     precio: formData.get("precio"),
     stock: formData.get("stock"),
     stock_minimo: formData.get("stock_minimo"),
@@ -132,6 +156,8 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
         color: v.color || null,
         descripcion: v.descripcion || null,
         observaciones: v.observaciones || null,
+        composicion: v.composicion || null,
+        medidas: parseMedidas(formData.get("medidas")) as Json,
         precio: v.precio,
         costo,
         costos: costosObj,
@@ -207,6 +233,8 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
       color: v.color || null,
       descripcion: v.descripcion || null,
       observaciones: v.observaciones || null,
+      composicion: v.composicion || null,
+      medidas: parseMedidas(formData.get("medidas")) as TablesUpdate<"prendas">["medidas"],
       precio: v.precio,
       costo,
       costos: costosObj,
