@@ -144,7 +144,7 @@ export function ProductoDetalle({
           className="mt-2 inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold text-white transition hover:opacity-90"
           style={{ background: agotado ? "#9aa0a6" : "var(--color-secundario)", pointerEvents: agotado ? "none" : undefined }}
         >
-          <MessageCircle size={19} /> {agotado ? "Agotado por ahora" : "Comprar / Apartar por WhatsApp"}
+          <MessageCircle size={19} /> {producto.estado === "APARTADO" ? "Reservado (apartado)" : agotado ? "Agotado por ahora" : "Comprar / Apartar por WhatsApp"}
         </a>
         <p className="text-xs opacity-60">
           Al enviar el mensaje, confirmamos la disponibilidad real antes de apartar o vender. El inventario solo cambia cuando nosotros lo confirmamos.

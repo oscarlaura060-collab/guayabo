@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { getConfig } from "@/lib/config";
 import { WHATSAPP_DEFECTO, linkWhatsApp } from "@/lib/tienda";
 import { TiendaHeader } from "@/components/tienda/TiendaHeader";
@@ -36,6 +37,18 @@ export default async function TiendaLayout({
         </div>
         <div className="px-4 pb-6 text-center text-xs opacity-50">© {anio} {nombre}. Todos los derechos reservados.</div>
       </footer>
+
+      {/* Botón flotante de WhatsApp */}
+      <a
+        href={waSaludo}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Escríbenos por WhatsApp"
+        className="fixed bottom-5 right-5 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition hover:scale-105"
+        style={{ background: "#25D366" }}
+      >
+        <MessageCircle size={26} />
+      </a>
     </div>
   );
 }

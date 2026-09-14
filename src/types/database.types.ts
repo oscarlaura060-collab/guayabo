@@ -735,6 +735,13 @@ export type Database = {
       }
     }
     Views: {
+      apartados_activos_publico: {
+        Row: {
+          prenda_id: string | null
+          reservado: number | null
+        }
+        Relationships: []
+      }
       catalogo_publico: {
         Row: {
           categoria: string | null

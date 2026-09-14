@@ -109,6 +109,7 @@ export async function crearApartado(formData: FormData): Promise<Resultado> {
     }
 
     revalidatePath("/apartados");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al crear el apartado" };
@@ -177,6 +178,7 @@ export async function convertirAVenta(apartadoId: string): Promise<Resultado> {
     revalidatePath("/apartados");
     revalidatePath("/ventas");
     revalidatePath("/inventario");
+    revalidatePath("/", "layout");
     return { ok: true, ventaId: ventaId as string };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al convertir el apartado" };
@@ -189,5 +191,6 @@ export async function cancelarApartado(id: string): Promise<Resultado> {
   const { error } = await supabase.from("apartados").update({ estado: "Cancelado", activo: false }).eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/apartados");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

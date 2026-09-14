@@ -49,6 +49,15 @@ export function PrendaForm({
   const [destacado, setDestacado] = useState(prenda?.destacado ?? false);
   const [enviando, setEnviando] = useState(false);
 
+  // Galería de fotos adicionales (se guardan en extra.imagenes).
+  const imagenesIniciales = useMemo(() => {
+    const e = (prenda?.extra ?? {}) as Record<string, unknown>;
+    return Array.isArray(e.imagenes) ? (e.imagenes as unknown[]).filter((x): x is string => typeof x === "string") : [];
+  }, [prenda]);
+  const [galeria, setGaleria] = useState<string[]>(imagenesIniciales);
+  const [nuevasFotos, setNuevasFotos] = useState<File[]>([]);
+  const BASE_STORAGE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/prendas/`;
+
   const costoTotal = useMemo(
     () => costos.reduce((s, c) => s + (Number(c.valor) || 0), 0),
     [costos],
@@ -88,6 +97,9 @@ export function PrendaForm({
       ),
     );
     if (imagen) fd.set("imagen", await comprimirImagen(imagen));
+    // Galería: qué fotos existentes se conservan + las nuevas (comprimidas).
+    fd.set("imagenes_conservar", JSON.stringify(galeria));
+    for (const f of nuevasFotos) fd.append("imagenes", await comprimirImagen(f));
     await onGuardar(fd);
     setEnviando(false);
   }
@@ -223,6 +235,35 @@ export function PrendaForm({
             Margen:{" "}
             <b style={{ color: margen >= 0 ? "#3AA76D" : "#D33A2C" }}>{pesos(margen)}</b>
           </span>
+        </div>
+      </div>
+
+      {/* Fotos adicionales (galería para la vitrina) */}
+      <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>
+        <div className="mb-2 text-sm font-semibold">Fotos adicionales <span className="font-normal" style={{ color: "var(--tenue)" }}>(se ven en la tienda)</span></div>
+        <div className="flex flex-wrap gap-2">
+          {galeria.map((path) => (
+            <div key={path} className="relative h-20 w-16 overflow-hidden rounded-xl border" style={{ borderColor: "var(--borde-suave)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`${BASE_STORAGE}${path}`} alt="" className="h-full w-full object-cover" />
+              <button type="button" onClick={() => setGaleria((g) => g.filter((x) => x !== path))} className="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full text-white" style={{ background: "#D33A2C" }} aria-label="Quitar">
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
+          {nuevasFotos.map((f, i) => (
+            <div key={i} className="relative h-20 w-16 overflow-hidden rounded-xl border" style={{ borderColor: "var(--color-secundario)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={URL.createObjectURL(f)} alt="" className="h-full w-full object-cover" />
+              <button type="button" onClick={() => setNuevasFotos((n) => n.filter((_, idx) => idx !== i))} className="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full text-white" style={{ background: "#D33A2C" }} aria-label="Quitar">
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
+          <label className="grid h-20 w-16 cursor-pointer place-items-center rounded-xl border text-center" style={{ borderColor: "var(--borde-suave)", background: "var(--color-fondo)", color: "var(--tenue)" }}>
+            <span className="flex flex-col items-center gap-0.5 text-[11px]"><ImagePlus size={18} /> Agregar</span>
+            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { setNuevasFotos((n) => [...n, ...Array.from(e.target.files ?? [])]); e.target.value = ""; }} />
+          </label>
         </div>
       </div>
 
