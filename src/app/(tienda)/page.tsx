@@ -29,16 +29,6 @@ export default async function TiendaHome() {
   const whatsapp = (config.WHATSAPP || WHATSAPP_DEFECTO).replace(/\D/g, "");
   const waSaludo = linkWhatsApp(whatsapp, `Hola ${EMOJI.saludo}, quiero saber la disponibilidad de las prendas de ${nombre}.`);
 
-  // Botones tipo "linktree" del inicio. Tiktok y Playlist se activan al
-  // guardar TIKTOK_URL y PLAYLIST_URL en Configuración.
-  const enlacesHero = [
-    { texto: "Whatsapp", href: waSaludo, externo: true },
-    { texto: "¿Quiénes somos?", href: "/nosotros", externo: false },
-    { texto: "Cónoce la historia", href: "/memoria", externo: false },
-    { texto: "Siguenos en Tiktok", href: config.TIKTOK_URL || "#", externo: true },
-    { texto: `Playlist ${nombre}`, href: config.PLAYLIST_URL || "#", externo: true },
-  ];
-
   const disponibles = productos.filter((p) => p.estado !== "AGOTADO");
   const destacados = disponibles.filter((p) => p.destacado).slice(0, 8);
   const novedades = disponibles.slice(0, 8);
@@ -96,19 +86,6 @@ export default async function TiendaHome() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Botones tipo linktree */}
-        <div className="relative z-10 mx-auto flex max-w-md flex-col gap-5 px-6 pt-9">
-          {enlacesHero.map((e, i) => {
-            const clase = "gy-hero-in group flex items-center justify-center rounded-full border-[3px] bg-[var(--color-fondo)] px-6 py-4 text-center text-lg font-semibold italic underline underline-offset-2 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg sm:text-xl";
-            const estilo = { borderColor: "var(--color-secundario)", color: "var(--color-secundario)", fontFamily: "var(--font-fraunces, serif)", animationDelay: `${i * 70}ms` } as const;
-            return e.externo ? (
-              <a key={e.texto} href={e.href} target="_blank" rel="noopener noreferrer" className={clase} style={estilo}>{e.texto}</a>
-            ) : (
-              <Link key={e.texto} href={e.href} className={clase} style={estilo}>{e.texto}</Link>
-            );
-          })}
         </div>
       </section>
 

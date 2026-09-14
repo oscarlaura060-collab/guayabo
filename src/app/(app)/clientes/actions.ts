@@ -3,7 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { puedeEscribirServer, esStaffActivo } from "@/lib/auth";
 import type { Tables } from "@/types/database.types";
+
+const NO_AUTORIZADO = { ok: false as const, error: "No autorizado." };
 
 const clienteSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
@@ -48,6 +51,7 @@ function valores(v: z.infer<typeof clienteSchema>) {
 }
 
 export async function crearCliente(formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   const supabase = await createClient();
@@ -68,6 +72,7 @@ export async function crearCliente(formData: FormData): Promise<ResultadoAccion>
 }
 
 export async function actualizarCliente(id: string, formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   const supabase = await createClient();
@@ -79,6 +84,7 @@ export async function actualizarCliente(id: string, formData: FormData): Promise
 
 /** Nada se borra si tiene historial: se marca activo = false. */
 export async function desactivarCliente(id: string): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const supabase = await createClient();
   const { error } = await supabase.from("clientes").update({ activo: false }).eq("id", id);
   if (error) return { ok: false, error: error.message };
@@ -97,6 +103,8 @@ export interface ResumenCliente {
 
 /** Ficha: pedidos del cliente y totales. */
 export async function resumenCliente(id: string): Promise<ResumenCliente> {
+  // Datos de ventas: solo staff activo (nunca la vitrina pública).
+  if (!(await esStaffActivo())) return { pedidos: [], totalComprado: 0, saldoPendiente: 0 };
   const supabase = await createClient();
   const { data } = await supabase
     .from("pedidos")

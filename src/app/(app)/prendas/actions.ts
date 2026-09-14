@@ -3,7 +3,10 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { puedeEscribirServer } from "@/lib/auth";
 import type { TablesUpdate, Json } from "@/types/database.types";
+
+const NO_AUTORIZADO = { ok: false as const, error: "No autorizado." };
 
 const costoSchema = z.object({
   nombre: z.string().min(1),
@@ -127,6 +130,7 @@ function leerConservar(raw: FormDataEntryValue | null): string[] {
 }
 
 export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -203,6 +207,7 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
  * con la cantidad propia de cada talla. No cambia el esquema ni afecta datos.
  */
 export async function crearPrendaMultitalla(formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -293,6 +298,7 @@ export async function crearPrendaMultitalla(formData: FormData): Promise<Resulta
 }
 
 export async function actualizarPrenda(id: string, formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -378,6 +384,7 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
  * (no las borra: conserva el historial). No cambia el esquema.
  */
 export async function actualizarPrendaGrupo(formData: FormData): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   const v = parsed.data;
@@ -495,6 +502,7 @@ export async function actualizarPrendaGrupo(formData: FormData): Promise<Resulta
 
 /** Nada se borra si tiene historial: se marca activo = false. */
 export async function desactivarPrenda(id: string): Promise<ResultadoAccion> {
+  if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const supabase = await createClient();
   const { error } = await supabase.from("prendas").update({ activo: false }).eq("id", id);
   if (error) return { ok: false, error: error.message };

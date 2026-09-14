@@ -38,3 +38,24 @@ export function rolDe(sesion: Sesion | null): Rol | null {
   const rol = sesion?.perfil?.activo ? sesion.perfil.rol : null;
   return (rol as Rol) ?? null;
 }
+
+/** Rol del usuario autenticado actual (o null si no hay sesión/perfil activo). */
+export async function rolActual(): Promise<Rol | null> {
+  return rolDe(await getSesion());
+}
+
+/** ¿El usuario actual es staff con permiso de escritura (ADMIN o VENDEDOR)? */
+export async function puedeEscribirServer(): Promise<boolean> {
+  const rol = await rolActual();
+  return rol === "ADMINISTRADOR" || rol === "VENDEDOR";
+}
+
+/** ¿El usuario actual es ADMINISTRADOR activo? */
+export async function esAdminServer(): Promise<boolean> {
+  return (await rolActual()) === "ADMINISTRADOR";
+}
+
+/** ¿Hay un perfil de staff activo (cualquier rol)? */
+export async function esStaffActivo(): Promise<boolean> {
+  return (await rolActual()) !== null;
+}
