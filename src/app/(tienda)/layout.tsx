@@ -32,7 +32,6 @@ export default async function TiendaLayout({
               Escríbenos por WhatsApp
             </a>
             <Link href="/catalogo" className="opacity-80 hover:opacity-100">Ver catálogo</Link>
-            <Link href="/dashboard" className="opacity-50 hover:opacity-100">Administrar tienda</Link>
           </div>
         </div>
         <div className="px-4 pb-6 text-center text-xs opacity-50">© {anio} {nombre}. Todos los derechos reservados.</div>
