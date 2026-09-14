@@ -27,6 +27,7 @@ export interface SolicitudRow {
   ciudad: string | null;
   direccion: string | null;
   items: ItemSolicitud[];
+  envio: number;
   total: number;
   estado: string;
   notas: string | null;
@@ -120,6 +121,11 @@ export function PedidosWebManager({
                     <span className="tabular-nums">{pesos((it.precio ?? 0) * (it.cantidad ?? 0))}</span>
                   </div>
                 ))}
+                {s.envio > 0 && (
+                  <div className="flex justify-between py-0.5" style={{ color: "var(--tenue)" }}>
+                    <span>Envío{s.ciudad ? ` · ${s.ciudad}` : ""}</span><span className="tabular-nums">{pesos(s.envio)}</span>
+                  </div>
+                )}
                 <div className="mt-1 flex justify-between border-t pt-1 font-semibold" style={{ borderColor: "var(--borde-suave)" }}>
                   <span>Total</span><span className="tabular-nums">{pesos(s.total)}</span>
                 </div>

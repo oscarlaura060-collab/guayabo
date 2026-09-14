@@ -12,6 +12,7 @@ const ADMIN = [
   "/prendas",
   "/inventario",
   "/apartados",
+  "/envios",
   "/ventas",
   "/pagos",
   "/gastos",

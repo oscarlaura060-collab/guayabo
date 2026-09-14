@@ -21,6 +21,7 @@ const solicitudSchema = z.object({
   ciudad: z.string().trim().optional().default(""),
   direccion: z.string().trim().optional().default(""),
   items: z.array(itemSchema).min(1, "Tu carrito está vacío"),
+  envio: z.number().default(0),
   total: z.number(),
 });
 
@@ -51,6 +52,7 @@ export async function crearSolicitud(input: unknown): Promise<ResultadoSolicitud
     ciudad: v.ciudad || null,
     direccion: v.direccion || null,
     items: v.items,
+    envio: v.envio,
     total: v.total,
     estado: "Nueva",
   });
