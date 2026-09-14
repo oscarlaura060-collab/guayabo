@@ -60,7 +60,9 @@ export function CarritoCliente({
     if (!nombre.trim()) return setError("Escribe tu nombre.");
     if (telefono.trim().length < 5) return setError("Escribe tu teléfono.");
     setEnviando(true);
-    const res = await crearSolicitud({
+    // Registrar el pedido en el panel (si falla, igual seguimos por WhatsApp
+    // para no perder el pedido).
+    await crearSolicitud({
       cliente_nombre: nombre,
       cedula,
       telefono,
@@ -71,10 +73,6 @@ export function CarritoCliente({
       total,
     });
     setEnviando(false);
-    if (!res.ok) {
-      setError(res.error ?? "No se pudo registrar. Intenta de nuevo.");
-      return;
-    }
     // Abrir WhatsApp con el pedido y los datos, y vaciar el carrito.
     window.open(linkWhatsApp(whatsapp, construirMensaje()), "_blank", "noopener,noreferrer");
     limpiar();

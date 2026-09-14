@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const itemSchema = z.object({
   prendaId: z.string(),
@@ -39,11 +39,10 @@ export async function crearSolicitud(input: unknown): Promise<ResultadoSolicitud
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   const v = parsed.data;
 
-  const admin = createAdminClient();
-  if (!admin) return { ok: false, error: "No se pudo registrar el pedido. Intenta por WhatsApp." };
+  const supabase = await createClient();
 
   const codigo = "WEB-" + Date.now().toString().slice(-6);
-  const { error } = await admin.from("solicitudes_web").insert({
+  const { error } = await supabase.from("solicitudes_web").insert({
     codigo,
     cliente_nombre: v.cliente_nombre,
     cedula: v.cedula || null,
