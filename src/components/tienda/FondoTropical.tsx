@@ -25,7 +25,20 @@ function frondPaths(): string[] {
   }
   return d;
 }
-const FROND = frondPaths();
+export const FROND = frondPaths();
+
+/** Una fronda grande y suelta, para marcas de agua decorativas (no en patrón). */
+export function FrondaGrande({ className = "", color, opacity, rotate = 0 }: { className?: string; color: string; opacity: number; rotate?: number }) {
+  return (
+    <div aria-hidden className={`pointer-events-none absolute ${className}`} style={{ color, opacity }}>
+      <svg viewBox="0 0 220 160" width="100%" height="100%" role="presentation" style={{ transform: `rotate(${rotate}deg)` }}>
+        <g fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          {FROND.map((d, i) => <path key={i} d={d} />)}
+        </g>
+      </svg>
+    </div>
+  );
+}
 
 const PALMERA_FRONDS = [
   "M58,60 C40,30 18,30 4,46", "M58,60 C44,24 26,18 12,24", "M58,60 C52,20 48,10 46,2",
