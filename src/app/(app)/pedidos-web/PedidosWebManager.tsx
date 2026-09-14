@@ -7,7 +7,8 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fechaHora } from "@/lib/format";
-import { actualizarEstadoSolicitud, eliminarSolicitud, ESTADOS_SOLICITUD } from "./actions";
+import { actualizarEstadoSolicitud, eliminarSolicitud } from "./actions";
+import { ESTADOS_SOLICITUD } from "./estados";
 
 interface ItemSolicitud {
   nombre?: string;
