@@ -20,6 +20,7 @@ const prendaSchema = z.object({
   precio: z.coerce.number().min(0),
   stock: z.coerce.number().int().min(0),
   stock_minimo: z.coerce.number().int().min(0),
+  destacado: z.coerce.boolean().default(false),
   costos: z.array(costoSchema).default([]),
 });
 
@@ -49,6 +50,7 @@ function leer(formData: FormData) {
     precio: formData.get("precio"),
     stock: formData.get("stock"),
     stock_minimo: formData.get("stock_minimo"),
+    destacado: formData.get("destacado") === "on" || formData.get("destacado") === "true",
     costos: parseCostos(formData.get("costos")),
   });
 }
@@ -103,6 +105,7 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
         costos: costosObj,
         stock: v.stock,
         stock_minimo: v.stock_minimo,
+        destacado: v.destacado,
         imagen_path,
       })
       .select("id, nombre")
@@ -126,6 +129,7 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
     }
 
     revalidatePath("/prendas");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al crear la prenda" };
@@ -165,6 +169,7 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
       costos: costosObj,
       stock: v.stock,
       stock_minimo: v.stock_minimo,
+      destacado: v.destacado,
     };
     if (imagen_path) update.imagen_path = imagen_path;
 
@@ -190,6 +195,7 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
     }
 
     revalidatePath("/prendas");
+    revalidatePath("/", "layout");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al actualizar la prenda" };
@@ -202,5 +208,6 @@ export async function desactivarPrenda(id: string): Promise<ResultadoAccion> {
   const { error } = await supabase.from("prendas").update({ activo: false }).eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/prendas");
+  revalidatePath("/", "layout");
   return { ok: true };
 }
