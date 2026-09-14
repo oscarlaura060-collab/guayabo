@@ -779,6 +779,7 @@ export type Database = {
           notas: string | null
           telefono: string | null
           total: number
+          venta_id: string | null
         }
         Insert: {
           cedula?: string | null
@@ -795,6 +796,7 @@ export type Database = {
           notas?: string | null
           telefono?: string | null
           total?: number
+          venta_id?: string | null
         }
         Update: {
           cedula?: string | null
@@ -811,6 +813,7 @@ export type Database = {
           notas?: string | null
           telefono?: string | null
           total?: number
+          venta_id?: string | null
         }
         Relationships: []
       }

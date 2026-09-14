@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Globe, Trash2, Phone, User, MapPin, Mail, CreditCard } from "lucide-react";
+import Link from "next/link";
+import { Globe, Trash2, Phone, User, MapPin, Mail, CreditCard, CheckCircle2, ShoppingBag } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fechaHora } from "@/lib/format";
-import { actualizarEstadoSolicitud, eliminarSolicitud } from "./actions";
+import { actualizarEstadoSolicitud, eliminarSolicitud, confirmarSolicitud } from "./actions";
 import { ESTADOS_SOLICITUD } from "./estados";
 
 interface ItemSolicitud {
@@ -32,6 +34,7 @@ export interface SolicitudRow {
   total: number;
   estado: string;
   notas: string | null;
+  venta_id: string | null;
 }
 
 const COLOR_ESTADO: Record<string, string> = {
@@ -55,6 +58,19 @@ export function PedidosWebManager({
   const router = useRouter();
   const { toast } = useToast();
   const [filtro, setFiltro] = useState<string>("");
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+
+  async function confirmar(s: SolicitudRow) {
+    if (!confirm(`¿Confirmar el pedido de ${s.cliente_nombre ?? "—"} y crear la venta? Se descontará el inventario.`)) return;
+    setConfirmando(s.id);
+    const res = await confirmarSolicitud(s.id);
+    setConfirmando(null);
+    if (res.ok) {
+      toast("Pedido confirmado como venta", "exito");
+      if (res.ventaId) router.push(`/ventas/${res.ventaId}`);
+      else router.refresh();
+    } else toast(res.error ?? "Error", "error");
+  }
 
   const lista = useMemo(
     () => (filtro ? solicitudes.filter((s) => s.estado === filtro) : solicitudes),
@@ -148,6 +164,17 @@ export function PedidosWebManager({
                   <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => borrar(s)} aria-label="Eliminar" title="Eliminar"><Trash2 size={15} /></button>
                 )}
               </div>
+
+              {/* Conexión con Ventas */}
+              {s.venta_id ? (
+                <Link href={`/ventas/${s.venta_id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl border py-2 text-sm font-semibold" style={{ borderColor: "color-mix(in srgb, #3AA76D 45%, transparent)", color: "#2e8b57" }}>
+                  <CheckCircle2 size={16} /> Ver venta
+                </Link>
+              ) : puedeEscribir && s.estado !== "Cancelada" ? (
+                <Button onClick={() => confirmar(s)} disabled={confirmando === s.id} className="w-full justify-center">
+                  <ShoppingBag size={16} /> {confirmando === s.id ? "Creando venta…" : "Confirmar como venta"}
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>
