@@ -5,6 +5,7 @@ import { WHATSAPP_DEFECTO, linkWhatsApp } from "@/lib/tienda";
 import { CarritoProvider } from "@/lib/carrito";
 import { EMOJI } from "@/lib/emoji";
 import { TiendaHeader } from "@/components/tienda/TiendaHeader";
+import { FondoTropical } from "@/components/tienda/FondoTropical";
 
 export default async function TiendaLayout({
   children,
@@ -20,7 +21,8 @@ export default async function TiendaLayout({
 
   return (
     <CarritoProvider>
-    <div className="flex min-h-dvh flex-col" style={{ background: "var(--color-fondo)", color: "var(--color-texto)" }}>
+    <FondoTropical />
+    <div className="relative flex min-h-dvh flex-col" style={{ color: "var(--color-texto)" }}>
       <TiendaHeader nombre={nombre} logoUrl={logoUrl} />
 
       <main className="flex-1">{children}</main>
