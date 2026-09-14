@@ -16,7 +16,7 @@ export function ProductCard({ producto }: { producto: Producto }) {
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl" style={{ background: "color-mix(in srgb, var(--color-texto) 5%, transparent)" }}>
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={producto.nombre} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+          <img src={img} alt={producto.nombre} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         ) : (
           <div className="grid h-full place-items-center opacity-40"><Shirt size={40} /></div>
         )}

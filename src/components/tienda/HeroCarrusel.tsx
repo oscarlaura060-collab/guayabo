@@ -20,7 +20,7 @@ export function HeroCarrusel({ imagenes, alt }: { imagenes: string[]; alt: strin
       {imagenes.map((src, i) => (
         <div key={src + i} className="gy-slide" data-on={i === activa}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt} loading={i === 0 ? "eager" : "lazy"} />
+          <img src={src} alt={alt} loading={i === 0 ? "eager" : "lazy"} decoding="async" fetchPriority={i === 0 ? "high" : "auto"} />
         </div>
       ))}
       {imagenes.length > 1 && (
