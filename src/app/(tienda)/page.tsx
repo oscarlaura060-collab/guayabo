@@ -6,6 +6,7 @@ import { EMOJI } from "@/lib/emoji";
 import { ProductCard } from "@/components/tienda/ProductCard";
 import { Reveal } from "@/components/tienda/Reveal";
 import { HeroCarrusel } from "@/components/tienda/HeroCarrusel";
+import { PatronTropical } from "@/components/tienda/FondoTropical";
 
 export const metadata = { title: "Inicio" };
 
@@ -41,24 +42,25 @@ export default async function TiendaHome() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden" style={{ background: "var(--color-primario)" }}>
-        <div className="mx-auto grid max-w-6xl items-center gap-6 px-4 py-8 sm:py-12 lg:grid-cols-2">
-          <div className="order-2 flex flex-col gap-5 lg:order-1">
-            <h1 className="gy-hero-in text-4xl leading-[1.05] sm:text-5xl" style={{ fontFamily: "var(--font-fraunces, serif)" }}>
+        <PatronTropical id="trop-hero" color="var(--color-texto)" opacity={0.09} />
+        <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-8 px-4 py-12 sm:py-16 lg:grid-cols-2 lg:py-20">
+          <div className="order-2 flex flex-col gap-6 lg:order-1">
+            <h1 className="gy-hero-in text-5xl leading-[0.98] sm:text-6xl lg:text-7xl" style={{ fontFamily: "var(--font-fraunces, serif)" }}>
               <span className="font-medium">Tener </span>
-              <span className="mx-1 inline-block rounded-full px-4 py-1 font-bold text-white" style={{ background: "var(--color-secundario)" }}>{nombre}</span>
+              <span className="mx-1 inline-block rounded-full px-5 py-1 font-extrabold uppercase tracking-tight text-white shadow-sm" style={{ background: "var(--color-secundario)" }}>{nombre}</span>
               <br />
-              <span className="italic">nunca había sido tan </span>
-              <span className="inline-block rounded-full px-4 py-1 font-bold italic" style={{ background: "color-mix(in srgb, var(--color-primario) 60%, #fff)" }}>¡Bacanooo!</span>
+              <span className="font-medium italic">nunca había sido tan </span>
+              <span className="inline-block rounded-full px-5 py-1 font-extrabold italic shadow-sm" style={{ background: "color-mix(in srgb, var(--color-primario) 55%, #fff)" }}>¡Bacanooo!</span>
             </h1>
             <Link
               href="/catalogo"
-              className="gy-hero-in inline-flex w-fit items-center gap-3 rounded-full px-6 py-3 text-base font-medium italic transition hover:opacity-90"
+              className="gy-hero-in inline-flex w-fit items-center gap-3 rounded-full px-7 py-3.5 text-base font-semibold italic shadow-sm transition hover:opacity-90"
               style={{ background: "color-mix(in srgb, var(--color-secundario) 22%, #fff)", color: "var(--color-secundario)", animationDelay: "90ms" }}
             >
               Explora nuestra última cápsula <ArrowRight size={18} />
             </Link>
           </div>
-          <div className="gy-hero-in order-1 mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-[40%_40%_45%_45%/8%_8%_50%_50%] lg:order-2" style={{ background: "color-mix(in srgb, var(--color-primario) 70%, #fff)", animationDelay: "60ms" }}>
+          <div className="gy-hero-in order-1 mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-[42%_42%_46%_46%/8%_8%_50%_50%] shadow-lg sm:max-w-md lg:order-2" style={{ background: "color-mix(in srgb, var(--color-primario) 70%, #fff)", animationDelay: "60ms" }}>
             {heroImgs.length ? (
               <HeroCarrusel imagenes={heroImgs} alt={nombre} />
             ) : (
@@ -107,10 +109,11 @@ export default async function TiendaHome() {
 
       {/* CTA final */}
       <Reveal className="mx-auto my-10 max-w-6xl px-4">
-        <div className="flex flex-col items-center gap-4 rounded-3xl px-6 py-12 text-center" style={{ background: "var(--color-primario)" }}>
-          <h2 className="text-2xl font-bold sm:text-3xl" style={{ fontFamily: "var(--font-fraunces, serif)" }}>¿Viste algo que te encantó?</h2>
-          <p className="max-w-md opacity-80">Elige tu prenda, talla y color, y envíanos tu solicitud por WhatsApp. Nosotros confirmamos disponibilidad.</p>
-          <a href={waSaludo} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: "var(--color-secundario)" }}>
+        <div className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl px-6 py-12 text-center" style={{ background: "var(--color-primario)" }}>
+          <PatronTropical id="trop-cta" color="var(--color-texto)" opacity={0.08} />
+          <h2 className="relative z-10 text-2xl font-bold sm:text-3xl" style={{ fontFamily: "var(--font-fraunces, serif)" }}>¿Viste algo que te encantó?</h2>
+          <p className="relative z-10 max-w-md opacity-80">Elige tu prenda, talla y color, y envíanos tu solicitud por WhatsApp. Nosotros confirmamos disponibilidad.</p>
+          <a href={waSaludo} target="_blank" rel="noopener noreferrer" className="relative z-10 inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: "var(--color-secundario)" }}>
             <MessageCircle size={17} /> Escríbenos por WhatsApp
           </a>
         </div>

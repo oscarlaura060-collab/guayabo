@@ -1,4 +1,5 @@
 import { getConfig } from "@/lib/config";
+import { PatronTropical } from "@/components/tienda/FondoTropical";
 
 export const metadata = { title: "Nosotros" };
 
@@ -30,8 +31,9 @@ export default async function NosotrosPage() {
       </section>
 
       {/* Equipo */}
-      <section className="py-12" style={{ background: "var(--color-primario)" }}>
-        <div className="mx-auto max-w-4xl px-5">
+      <section className="relative overflow-hidden py-12" style={{ background: "var(--color-primario)" }}>
+        <PatronTropical id="trop-nosotros" color="var(--color-texto)" opacity={0.08} />
+        <div className="relative z-10 mx-auto max-w-4xl px-5">
           <div className="flex flex-wrap items-start justify-center gap-8">
             {EQUIPO.map((m) => {
               const url = config[m.clave] || null;
