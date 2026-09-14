@@ -88,6 +88,48 @@ export async function subirFotosPortada(formData: FormData): Promise<Resultado> 
   return { ok: true };
 }
 
+/**
+ * Sube una imagen y guarda su URL en cualquier clave de config (…_URL).
+ * Crea la fila si no existe. Se usa para las fotos del equipo, del sombrero,
+ * del fondo de Memoria y de los platos.
+ */
+export async function subirImagenConfig(clave: string, formData: FormData): Promise<Resultado & { url?: string }> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  if (!/^[A-Z0-9_]+_URL$/.test(clave)) return { ok: false, error: "Clave inválida." };
+  const archivo = formData.get("archivo");
+  if (!(archivo instanceof File) || archivo.size === 0) return { ok: false, error: "Elige una imagen." };
+  const supabase = await createClient();
+  const ext = (archivo.name.split(".").pop() || "webp").toLowerCase();
+  const path = `marca/${clave.toLowerCase()}-${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("prendas")
+    .upload(path, archivo, { contentType: archivo.type || "image/webp", upsert: false });
+  if (error) return { ok: false, error: error.message };
+  const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/prendas/${path}`;
+  const { error: e2 } = await supabase.from("config").upsert({ clave, valor: url, activo: true }, { onConflict: "clave" });
+  if (e2) return { ok: false, error: e2.message };
+  revalidatePath("/", "layout");
+  revalidatePath("/configuracion");
+  return { ok: true, url };
+}
+
+/** Guarda (creando si hace falta) claves de texto de config, p.ej. enlaces sociales. */
+export async function guardarConfigUpsert(valores: Record<string, string>): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const supabase = await createClient();
+  try {
+    for (const [clave, valor] of Object.entries(valores)) {
+      const { error } = await supabase.from("config").upsert({ clave, valor, activo: true }, { onConflict: "clave" });
+      if (error) throw new Error(`${clave}: ${error.message}`);
+    }
+    revalidatePath("/", "layout");
+    revalidatePath("/configuracion");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al guardar" };
+  }
+}
+
 // ---------------- Catálogos (listas) ----------------
 
 export async function crearLista(datos: {

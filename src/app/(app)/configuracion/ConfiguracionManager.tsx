@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
-import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada } from "./actions";
+import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada, subirImagenConfig, guardarConfigUpsert } from "./actions";
 import { comprimirImagen } from "@/lib/imagen";
 
 export interface ConfigRow {
@@ -36,6 +36,19 @@ const colorRol: Record<string, string> = { ADMINISTRADOR: "#E8288E", VENDEDOR: "
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
 const inputStyle = { borderColor: "var(--borde-suave)" } as const;
+
+// Imágenes de la vitrina que se pueden reemplazar fácilmente.
+const ASSETS_VITRINA = [
+  { clave: "NOSOTROS_FOTO_URL", etiqueta: "Nosotros · foto del equipo (arriba)", ancho: 1600 },
+  { clave: "EQUIPO_MELA_URL", etiqueta: "Nosotros · foto de Mela", ancho: 900 },
+  { clave: "EQUIPO_KARINA_URL", etiqueta: "Nosotros · foto de Karina", ancho: 900 },
+  { clave: "EQUIPO_OSCAR_URL", etiqueta: "Nosotros · foto de Oscar", ancho: 900 },
+  { clave: "EQUIPO_SOMBRERO_URL", etiqueta: "Nosotros · sombrero vueltiao (PNG transparente)", ancho: 900 },
+  { clave: "MEMORIA_FONDO_URL", etiqueta: "Memoria · fondo tropical", ancho: 2000 },
+  { clave: "MEMORIA_CAYEYE_URL", etiqueta: "Memoria · foto Cayeye", ancho: 800 },
+  { clave: "MEMORIA_PATACONES_URL", etiqueta: "Memoria · foto Patacones", ancho: 800 },
+  { clave: "MEMORIA_RASPAO_URL", etiqueta: "Memoria · foto Raspao", ancho: 800 },
+] as const;
 
 export function ConfiguracionManager({
   config,
@@ -134,6 +147,63 @@ export function ConfiguracionManager({
     const res = await subirFotosPortada(fd);
     setSubiendoPortada(false);
     if (res.ok) { toast("Foto quitada", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+
+  // Un uploader por imagen de la vitrina.
+  function SubirAsset({ clave, etiqueta, ancho }: { clave: string; etiqueta: string; ancho: number }) {
+    const [subiendo, setSubiendo] = useState(false);
+    const actual = valores[clave];
+    async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+      e.preventDefault();
+      const input = e.currentTarget.querySelector<HTMLInputElement>('input[type="file"]');
+      const file = input?.files?.[0];
+      if (!file) { toast("Elige una imagen.", "error"); return; }
+      const form = e.currentTarget;
+      setSubiendo(true);
+      try {
+        const comp = await comprimirImagen(file, { maxLado: ancho });
+        const fd = new FormData();
+        fd.set("archivo", comp);
+        const res = await subirImagenConfig(clave, fd);
+        if (res.ok) { toast("Imagen actualizada", "exito"); form.reset(); router.refresh(); }
+        else toast(res.error ?? "Error", "error");
+      } catch {
+        toast("Esta imagen no pudo procesarse. Intenta nuevamente.", "error");
+      } finally {
+        setSubiendo(false);
+      }
+    }
+    return (
+      <div className="flex items-center gap-3 rounded-xl border p-2" style={{ borderColor: "var(--borde-suave)" }}>
+        <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-lg" style={{ background: "var(--color-primario)" }}>
+          {actual ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={actual} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="text-xs" style={{ color: "var(--color-secundario)" }}>—</span>
+          )}
+        </div>
+        <form onSubmit={onSubmit} className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="truncate text-xs font-medium">{etiqueta}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <input className={`${inputCls} min-w-0 flex-1`} style={inputStyle} type="file" accept="image/*" required />
+            <Button type="submit" disabled={subiendo}>{subiendo ? "Subiendo…" : "Subir"}</Button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // Enlaces sociales (se crean si no existen).
+  const [tiktok, setTiktok] = useState(valores.TIKTOK_URL ?? "");
+  const [playlist, setPlaylist] = useState(valores.PLAYLIST_URL ?? "");
+  const [guardandoEnlaces, setGuardandoEnlaces] = useState(false);
+  async function onGuardarEnlaces() {
+    setGuardandoEnlaces(true);
+    const res = await guardarConfigUpsert({ TIKTOK_URL: tiktok.trim(), PLAYLIST_URL: playlist.trim() });
+    setGuardandoEnlaces(false);
+    if (res.ok) { toast("Enlaces guardados", "exito"); router.refresh(); }
     else toast(res.error ?? "Error", "error");
   }
 
@@ -273,6 +343,36 @@ export function ConfiguracionManager({
               )}
             </form>
             <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Se optimizan automáticamente (WebP). Se muestran en el carrusel del inicio; si no subes ninguna, se usan las fotos de tus productos.</p>
+          </div>
+
+          {/* Imágenes de la vitrina (Nosotros y Memoria) */}
+          <div className="gy-card mb-4 p-4">
+            <div className="mb-1 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Imágenes de la vitrina</div>
+            <p className="mb-3 text-xs" style={{ color: "var(--tenue)" }}>Fotos del equipo (Nosotros) y de los platos (Memoria Colectiva). Se optimizan a WebP al subir. Para el sombrero usa un PNG con fondo transparente.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {ASSETS_VITRINA.map((a) => (
+                <SubirAsset key={a.clave} clave={a.clave} etiqueta={a.etiqueta} ancho={a.ancho} />
+              ))}
+            </div>
+          </div>
+
+          {/* Enlaces del inicio (botones) */}
+          <div className="gy-card mb-4 p-4">
+            <div className="mb-1 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Enlaces del inicio</div>
+            <p className="mb-3 text-xs" style={{ color: "var(--tenue)" }}>Activan los botones de TikTok y de la playlist en la página de inicio. Pega el enlace completo (https://…).</p>
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                TikTok
+                <input className={`${inputCls} w-full`} style={inputStyle} value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="https://www.tiktok.com/@guayabo" />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Playlist (Spotify, YouTube…)
+                <input className={`${inputCls} w-full`} style={inputStyle} value={playlist} onChange={(e) => setPlaylist(e.target.value)} placeholder="https://open.spotify.com/playlist/…" />
+              </label>
+              <div className="flex justify-end">
+                <Button onClick={onGuardarEnlaces} disabled={guardandoEnlaces}>{guardandoEnlaces ? "Guardando…" : "Guardar enlaces"}</Button>
+              </div>
+            </div>
           </div>
 
           <div className="mb-3 flex items-center justify-end gap-3">
