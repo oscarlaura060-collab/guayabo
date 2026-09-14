@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database.types";
-import type { EstadoTienda, Producto, Variante } from "@/lib/tienda-tipos";
+import type { EstadoTienda, Producto, Variante, TablaMedidas } from "@/lib/tienda-tipos";
 
 // Reexporta los tipos/helpers de la vitrina para quien importe desde aquí.
 export { WHATSAPP_DEFECTO, COLOR_ESTADO, linkWhatsApp } from "@/lib/tienda-tipos";
@@ -51,10 +51,30 @@ interface FilaCatalogo {
   stock: number | null;
   stock_minimo: number | null;
   descripcion: string | null;
+  composicion: string | null;
+  medidas: Json | null;
   imagen_path: string | null;
   extra: Json | null;
   destacado: boolean | null;
   created_at: string | null;
+}
+
+/** Interpreta el jsonb de medidas en una tabla válida, o null. */
+function parseMedidas(raw: Json | null): TablaMedidas | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const columnas = Array.isArray(o.columnas) ? (o.columnas.filter((x) => typeof x === "string") as string[]) : [];
+  const filasRaw = Array.isArray(o.filas) ? o.filas : [];
+  const filas = filasRaw
+    .map((f) => {
+      const ff = (f ?? {}) as Record<string, unknown>;
+      const label = typeof ff.label === "string" ? ff.label : "";
+      const valores = Array.isArray(ff.valores) ? (ff.valores.map((v) => String(v ?? "")) as string[]) : [];
+      return { label, valores };
+    })
+    .filter((f) => f.label);
+  if (!columnas.length || !filas.length) return null;
+  return { nota: typeof o.nota === "string" ? o.nota : "Medidas en cm", columnas, filas };
 }
 
 /** Agrupa las filas del catálogo (una por talla/color) en productos. */
@@ -98,6 +118,8 @@ function agrupar(filas: FilaCatalogo[]): Producto[] {
       nombre: primera.nombre!.trim(),
       categoria: primera.categoria,
       descripcion: filasProd.find((f) => f.descripcion)?.descripcion ?? null,
+      composicion: filasProd.find((f) => f.composicion)?.composicion ?? null,
+      medidas: parseMedidas(filasProd.map((f) => f.medidas).find((m) => parseMedidas(m ?? null)) ?? null),
       destacado: filasProd.some((f) => f.destacado),
       precioMin: precios.length ? Math.min(...precios) : 0,
       precioMax: precios.length ? Math.max(...precios) : 0,
@@ -121,7 +143,7 @@ export async function getProductos(): Promise<Producto[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("catalogo_publico")
-    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
+    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, composicion, medidas, imagen_path, extra, destacado, created_at")
     .order("created_at", { ascending: false });
   return agrupar((data ?? []) as FilaCatalogo[]);
 }
@@ -138,7 +160,7 @@ export async function getProducto(varianteId: string): Promise<Producto | null> 
 
   const { data } = await supabase
     .from("catalogo_publico")
-    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
+    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, composicion, medidas, imagen_path, extra, destacado, created_at")
     .eq("nombre", fila.nombre);
   const productos = agrupar((data ?? []) as FilaCatalogo[]);
   return productos[0] ?? null;

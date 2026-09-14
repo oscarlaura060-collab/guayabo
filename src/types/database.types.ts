@@ -695,6 +695,7 @@ export type Database = {
           codigo: string | null
           color: string | null
           costo: number
+          composicion: string | null
           costos: Json
           created_at: string
           descripcion: string | null
@@ -703,6 +704,7 @@ export type Database = {
           id: string
           imagen_path: string | null
           legacy_id: string | null
+          medidas: Json
           nombre: string
           observaciones: string | null
           precio: number
@@ -716,12 +718,14 @@ export type Database = {
           categoria?: string | null
           codigo?: string | null
           color?: string | null
+          composicion?: string | null
           costo?: number
           costos?: Json
           created_at?: string
           descripcion?: string | null
           destacado?: boolean
           extra?: Json
+          medidas?: Json
           id?: string
           imagen_path?: string | null
           legacy_id?: string | null
@@ -738,6 +742,7 @@ export type Database = {
           categoria?: string | null
           codigo?: string | null
           color?: string | null
+          composicion?: string | null
           costo?: number
           costos?: Json
           created_at?: string
@@ -747,6 +752,7 @@ export type Database = {
           id?: string
           imagen_path?: string | null
           legacy_id?: string | null
+          medidas?: Json
           nombre?: string
           observaciones?: string | null
           precio?: number
@@ -821,12 +827,14 @@ export type Database = {
         Row: {
           categoria: string | null
           color: string | null
+          composicion: string | null
           created_at: string | null
           descripcion: string | null
           destacado: boolean | null
           extra: Json | null
           id: string | null
           imagen_path: string | null
+          medidas: Json | null
           nombre: string | null
           precio: number | null
           stock: number | null

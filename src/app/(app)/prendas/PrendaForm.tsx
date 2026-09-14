@@ -47,7 +47,24 @@ export function PrendaForm({
   const [imagen, setImagen] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(prenda ? urlImagenPrenda(prenda) : null);
   const [destacado, setDestacado] = useState(prenda?.destacado ?? false);
+  const [composicion, setComposicion] = useState(prenda?.composicion ?? "");
   const [enviando, setEnviando] = useState(false);
+
+  // Medidas: { nota, columnas: string[], filas: [{label, valores[]}] }
+  const medidasInicial = useMemo(() => {
+    const m = (prenda?.medidas ?? {}) as Record<string, unknown>;
+    const columnas = Array.isArray(m.columnas) ? (m.columnas.filter((x) => typeof x === "string") as string[]) : [];
+    const filas = Array.isArray(m.filas)
+      ? (m.filas as Array<Record<string, unknown>>).map((f) => ({
+          label: typeof f.label === "string" ? f.label : "",
+          valores: Array.isArray(f.valores) ? (f.valores.map((v) => String(v ?? "")) as string[]) : [],
+        }))
+      : [];
+    return { nota: typeof m.nota === "string" ? m.nota : "Medidas en cm", columnas, filas };
+  }, [prenda]);
+  const [medNota, setMedNota] = useState(medidasInicial.nota);
+  const [medCols, setMedCols] = useState<string[]>(medidasInicial.columnas);
+  const [medFilas, setMedFilas] = useState<{ label: string; valores: string[] }[]>(medidasInicial.filas);
 
   // Galería de fotos adicionales (se guardan en extra.imagenes).
   const imagenesIniciales = useMemo(() => {
@@ -88,6 +105,8 @@ export function PrendaForm({
     fd.set("descripcion", descripcion);
     fd.set("observaciones", observaciones);
     fd.set("destacado", destacado ? "on" : "");
+    fd.set("composicion", composicion);
+    fd.set("medidas", JSON.stringify({ nota: medNota, columnas: medCols, filas: medFilas }));
     fd.set(
       "costos",
       JSON.stringify(
@@ -265,6 +284,53 @@ export function PrendaForm({
             <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { setNuevasFotos((n) => [...n, ...Array.from(e.target.files ?? [])]); e.target.value = ""; }} />
           </label>
         </div>
+      </div>
+
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Composición <span className="font-normal" style={{ color: "var(--tenue)" }}>(se ve en la tienda)</span>
+        <input className={inputCls} style={inputStyle} value={composicion} onChange={(e) => setComposicion(e.target.value)} placeholder="Ej. 100% algodón. Fit oversize. Unisex." />
+      </label>
+
+      {/* Tabla de medidas */}
+      <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-semibold">Tabla de medidas <span className="font-normal" style={{ color: "var(--tenue)" }}>(opcional, para la ficha)</span></span>
+          <button type="button" className="gy-btn gy-btn-plano !px-2 !py-1 text-sm" onClick={() => { setMedCols((c) => [...c, ""]); setMedFilas((fs) => fs.map((f) => ({ ...f, valores: [...f.valores, ""] }))); }}>
+            <Plus size={14} /> Columna
+          </button>
+        </div>
+        {medCols.length === 0 ? (
+          <p className="text-xs" style={{ color: "var(--tenue)" }}>Agrega columnas (tallas, ej. S, M, L) y filas (medidas, ej. Cintura, Largo).</p>
+        ) : (
+          <div className="flex flex-col gap-2 overflow-x-auto">
+            {/* Encabezados de columnas */}
+            <div className="flex items-center gap-2">
+              <span className="w-28 shrink-0 text-xs font-semibold" style={{ color: "var(--tenue)" }}>Talla →</span>
+              {medCols.map((c, i) => (
+                <div key={i} className="flex w-20 shrink-0 items-center gap-1">
+                  <input className={`${inputCls} w-full !px-2 !py-1 text-center`} style={inputStyle} value={c} placeholder="S" onChange={(e) => setMedCols((cs) => cs.map((v, x) => (x === i ? e.target.value : v)))} />
+                  <button type="button" onClick={() => { setMedCols((cs) => cs.filter((_, x) => x !== i)); setMedFilas((fs) => fs.map((f) => ({ ...f, valores: f.valores.filter((_, x) => x !== i) }))); }} aria-label="Quitar columna" style={{ color: "#D33A2C" }}>×</button>
+                </div>
+              ))}
+            </div>
+            {/* Filas */}
+            {medFilas.map((f, fi) => (
+              <div key={fi} className="flex items-center gap-2">
+                <input className={`${inputCls} w-28 shrink-0 !px-2 !py-1`} style={inputStyle} value={f.label} placeholder="Cintura" onChange={(e) => setMedFilas((fs) => fs.map((row, x) => (x === fi ? { ...row, label: e.target.value } : row)))} />
+                {medCols.map((_, ci) => (
+                  <input key={ci} className={`${inputCls} w-20 shrink-0 !px-2 !py-1 text-center`} style={inputStyle} value={f.valores[ci] ?? ""} placeholder="00" onChange={(e) => setMedFilas((fs) => fs.map((row, x) => (x === fi ? { ...row, valores: row.valores.map((v, y) => (y === ci ? e.target.value : v)).concat(Array(Math.max(0, ci + 1 - row.valores.length)).fill("")) } : row)))} />
+                ))}
+                <button type="button" className="gy-btn gy-btn-plano !px-2" onClick={() => setMedFilas((fs) => fs.filter((_, x) => x !== fi))} aria-label="Quitar fila"><Trash2 size={15} /></button>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <button type="button" className="gy-btn gy-btn-plano !px-2 !py-1 text-sm" onClick={() => setMedFilas((fs) => [...fs, { label: "", valores: medCols.map(() => "") }])}>
+                <Plus size={14} /> Fila
+              </button>
+              <input className={`${inputCls} flex-1 !py-1 text-sm`} style={inputStyle} value={medNota} onChange={(e) => setMedNota(e.target.value)} placeholder="Nota (ej. Medidas en cm)" />
+            </div>
+          </div>
+        )}
       </div>
 
       <label className="flex flex-col gap-1 text-sm font-medium">

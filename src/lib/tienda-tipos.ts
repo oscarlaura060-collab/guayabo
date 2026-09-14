@@ -22,11 +22,19 @@ export interface Variante {
   imagenes: string[];
 }
 
+export interface TablaMedidas {
+  nota: string;
+  columnas: string[];
+  filas: { label: string; valores: string[] }[];
+}
+
 export interface Producto {
   id: string; // id de una variante representativa (para la URL)
   nombre: string;
   categoria: string | null;
   descripcion: string | null;
+  composicion: string | null;
+  medidas: TablaMedidas | null;
   destacado: boolean;
   precioMin: number;
   precioMax: number;
