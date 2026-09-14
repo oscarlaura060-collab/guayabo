@@ -23,21 +23,22 @@ export function PrendaForm({
   prenda,
   catalogos,
   esEdicion = false,
+  hermanas = [],
   onGuardar,
   onCancelar,
 }: {
   prenda: Prenda | null;
   catalogos: CatalogosPrenda;
   esEdicion?: boolean;
+  /** En edición: todas las filas del producto (mismo nombre y color). */
+  hermanas?: Prenda[];
   onGuardar: (fd: FormData) => Promise<void>;
   onCancelar: () => void;
 }) {
   const [nombre, setNombre] = useState(prenda?.nombre ?? "");
   const [categoria, setCategoria] = useState(prenda?.categoria ?? "");
-  const [talla, setTalla] = useState(prenda?.talla ?? "");
   const [color, setColor] = useState(prenda?.color ?? "");
   const [precio, setPrecio] = useState(String(prenda?.precio ?? ""));
-  const [stock, setStock] = useState(String(prenda?.stock ?? "0"));
   const [stockMin, setStockMin] = useState(String(prenda?.stock_minimo ?? "5"));
   const [descripcion] = useState(prenda?.descripcion ?? "");
   const [observaciones, setObservaciones] = useState(prenda?.observaciones ?? "");
@@ -50,16 +51,23 @@ export function PrendaForm({
   const [composicion, setComposicion] = useState(prenda?.composicion ?? "");
   const [enviando, setEnviando] = useState(false);
 
-  // Tallas (solo al CREAR): selección múltiple con cantidad por talla.
+  // Tallas y cantidades (crear y editar): grid de todas las tallas del producto.
   const tallasDisponibles = catalogos.tallas.length ? catalogos.tallas : ["XS", "S", "M", "L", "XL", "XXL"];
-  const [tallasSel, setTallasSel] = useState<{ talla: string; stock: string }[]>(
-    () => (!esEdicion && prenda?.talla ? [{ talla: prenda.talla, stock: "0" }] : []),
-  );
+  const [tallasSel, setTallasSel] = useState<{ id?: string; talla: string; stock: string }[]>(() => {
+    if (esEdicion) {
+      const base = hermanas.length ? hermanas : prenda ? [prenda] : [];
+      return base.filter((h) => h.talla).map((h) => ({ id: h.id, talla: h.talla as string, stock: String(h.stock) }));
+    }
+    return prenda?.talla ? [{ talla: prenda.talla, stock: "0" }] : [];
+  });
   function toggleTalla(t: string) {
     setTallasSel((sel) => (sel.some((x) => x.talla === t) ? sel.filter((x) => x.talla !== t) : [...sel, { talla: t, stock: "0" }]));
   }
   function setTallaStock(t: string, val: string) {
     setTallasSel((sel) => sel.map((x) => (x.talla === t ? { ...x, stock: val } : x)));
+  }
+  function quitarTalla(t: string) {
+    setTallasSel((sel) => sel.filter((x) => x.talla !== t));
   }
 
   // Medidas: { nota, columnas: string[], filas: [{label, valores[]}] }
@@ -109,10 +117,10 @@ export function PrendaForm({
     const fd = new FormData();
     fd.set("nombre", nombre);
     fd.set("categoria", categoria);
-    fd.set("talla", talla);
+    fd.set("talla", "");
     fd.set("color", color);
     fd.set("precio", precio || "0");
-    fd.set("stock", stock || "0");
+    fd.set("stock", "0");
     fd.set("stock_minimo", stockMin || "0");
     fd.set("descripcion", descripcion);
     fd.set("observaciones", observaciones);
@@ -127,16 +135,15 @@ export function PrendaForm({
           .map((c) => ({ nombre: c.nombre, valor: Number(c.valor) })),
       ),
     );
-    // Al crear: mandamos las tallas seleccionadas con su cantidad.
-    if (!esEdicion) {
-      fd.set(
-        "tallas",
-        JSON.stringify(
-          tallasSel
-            .filter((t) => t.talla)
-            .map((t) => ({ talla: t.talla, stock: Math.max(0, Math.floor(Number(t.stock) || 0)) })),
-        ),
-      );
+    // Tallas: al crear se crean todas; al editar se actualiza el grupo.
+    const tallasPayload = tallasSel
+      .filter((t) => t.talla)
+      .map((t) => ({ id: t.id, talla: t.talla, stock: Math.max(0, Math.floor(Number(t.stock) || 0)) }));
+    if (esEdicion) {
+      fd.set("grupo_ids", JSON.stringify(hermanas.map((h) => h.id)));
+      fd.set("grupo_tallas", JSON.stringify(tallasPayload));
+    } else {
+      fd.set("tallas", JSON.stringify(tallasPayload.map(({ talla, stock }) => ({ talla, stock }))));
     }
     if (imagen) fd.set("imagen", await comprimirImagen(imagen));
     // Galería: qué fotos existentes se conservan + las nuevas (comprimidas).
@@ -189,100 +196,71 @@ export function PrendaForm({
         </div>
       </div>
 
-      {esEdicion ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Talla
-            <select className={inputCls} style={inputStyle} value={talla} onChange={(e) => setTalla(e.target.value)}>
-              <option value="">—</option>
-              {catalogos.tallas.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Color
-            <select className={inputCls} style={inputStyle} value={color} onChange={(e) => setColor(e.target.value)}>
-              <option value="">—</option>
-              {catalogos.colores.map((c) => (
-                <option key={c.nombre} value={c.nombre}>{c.nombre}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Stock
-            <input className={inputCls} style={inputStyle} type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Stock mínimo
-            <input className={inputCls} style={inputStyle} type="number" min="0" value={stockMin} onChange={(e) => setStockMin(e.target.value)} />
-          </label>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Color
-              <select className={inputCls} style={inputStyle} value={color} onChange={(e) => setColor(e.target.value)}>
-                <option value="">—</option>
-                {catalogos.colores.map((c) => (
-                  <option key={c.nombre} value={c.nombre}>{c.nombre}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Stock mínimo <span className="font-normal" style={{ color: "var(--tenue)" }}>(alerta)</span>
-              <input className={inputCls} style={inputStyle} type="number" min="0" value={stockMin} onChange={(e) => setStockMin(e.target.value)} />
-            </label>
-          </div>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Color
+          <select className={inputCls} style={inputStyle} value={color} onChange={(e) => setColor(e.target.value)}>
+            <option value="">—</option>
+            {catalogos.colores.map((c) => (
+              <option key={c.nombre} value={c.nombre}>{c.nombre}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Stock mínimo <span className="font-normal" style={{ color: "var(--tenue)" }}>(alerta)</span>
+          <input className={inputCls} style={inputStyle} type="number" min="0" value={stockMin} onChange={(e) => setStockMin(e.target.value)} />
+        </label>
+      </div>
 
-          {/* Tallas y cantidades (creación masiva) */}
-          <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>
-            <div className="mb-2 text-sm font-semibold">Tallas y cantidades</div>
-            <div className="mb-3 flex flex-wrap gap-2">
-              {tallasDisponibles.map((t) => {
-                const on = tallasSel.some((x) => x.talla === t);
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => toggleTalla(t)}
-                    className="min-w-11 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
-                    style={{
-                      borderColor: on ? "var(--color-secundario)" : "var(--borde-suave)",
-                      background: on ? "var(--color-secundario)" : "transparent",
-                      color: on ? "#fff" : "inherit",
-                    }}
-                  >
-                    {t}
-                  </button>
-                );
-              })}
-            </div>
-            {tallasSel.length === 0 ? (
-              <p className="text-xs" style={{ color: "var(--tenue)" }}>Marca las tallas que vas a crear. Cada una tendrá su propia cantidad.</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {tallasSel.map((t) => (
-                  <div key={t.talla} className="flex items-center gap-3">
-                    <span className="w-12 text-sm font-semibold">{t.talla}</span>
-                    <input
-                      className={`${inputCls} w-28`}
-                      style={inputStyle}
-                      type="number"
-                      min="0"
-                      value={t.stock}
-                      onChange={(e) => setTallaStock(t.talla, e.target.value)}
-                      aria-label={`Cantidad talla ${t.talla}`}
-                    />
-                    <span className="text-xs" style={{ color: "var(--tenue)" }}>unidades</span>
-                  </div>
-                ))}
+      {/* Tallas y cantidades (crear = varias a la vez; editar = todo el producto) */}
+      <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>
+        <div className="mb-2 text-sm font-semibold">Tallas y cantidades</div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {[...new Set([...tallasDisponibles, ...tallasSel.map((t) => t.talla)])].map((t) => {
+            const on = tallasSel.some((x) => x.talla === t);
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleTalla(t)}
+                className="min-w-11 rounded-full border px-3 py-1.5 text-sm font-semibold transition"
+                style={{
+                  borderColor: on ? "var(--color-secundario)" : "var(--borde-suave)",
+                  background: on ? "var(--color-secundario)" : "transparent",
+                  color: on ? "#fff" : "inherit",
+                }}
+              >
+                {t}
+              </button>
+            );
+          })}
+        </div>
+        {tallasSel.length === 0 ? (
+          <p className="text-xs" style={{ color: "var(--tenue)" }}>Marca las tallas. Cada una tendrá su propia cantidad.</p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {tallasSel.map((t) => (
+              <div key={t.talla} className="flex items-center gap-3">
+                <span className="w-12 text-sm font-semibold">{t.talla}</span>
+                <input
+                  className={`${inputCls} w-28`}
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  value={t.stock}
+                  onChange={(e) => setTallaStock(t.talla, e.target.value)}
+                  aria-label={`Cantidad talla ${t.talla}`}
+                />
+                <span className="text-xs" style={{ color: "var(--tenue)" }}>unidades</span>
+                <button type="button" className="gy-btn gy-btn-plano !p-1.5" onClick={() => quitarTalla(t.talla)} aria-label={`Quitar talla ${t.talla}`} title="Quitar talla">
+                  <Trash2 size={14} />
+                </button>
               </div>
-            )}
+            ))}
           </div>
-        </>
-      )}
+        )}
+        {esEdicion && <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Editas todas las tallas de este producto. Las que quites se desactivan (no se borran).</p>}
+      </div>
 
       {/* Desglose de costos */}
       <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>

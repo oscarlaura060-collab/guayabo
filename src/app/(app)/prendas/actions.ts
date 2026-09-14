@@ -371,6 +371,128 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
   }
 }
 
+/**
+ * Edita TODAS las tallas de un producto a la vez (las filas que comparten
+ * nombre y color). Aplica los datos compartidos a todas, actualiza la
+ * cantidad de cada talla, crea las tallas nuevas y desactiva las quitadas
+ * (no las borra: conserva el historial). No cambia el esquema.
+ */
+export async function actualizarPrendaGrupo(formData: FormData): Promise<ResultadoAccion> {
+  const parsed = leer(formData);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const v = parsed.data;
+
+  // Ids del grupo actual (antes de editar) y tallas enviadas.
+  let grupoIds: string[] = [];
+  let tallas: { id?: string; talla: string; stock: number }[] = [];
+  try {
+    const g = JSON.parse(String(formData.get("grupo_ids") || "[]"));
+    if (Array.isArray(g)) grupoIds = g.filter((x) => typeof x === "string");
+  } catch {}
+  try {
+    const arr = JSON.parse(String(formData.get("grupo_tallas") || "[]"));
+    if (Array.isArray(arr)) {
+      const vistas = new Set<string>();
+      for (const t of arr) {
+        const nombreTalla = String(t?.talla ?? "").trim();
+        if (!nombreTalla || vistas.has(nombreTalla.toUpperCase())) continue;
+        vistas.add(nombreTalla.toUpperCase());
+        tallas.push({ id: typeof t?.id === "string" ? t.id : undefined, talla: nombreTalla, stock: Math.max(0, Math.floor(Number(t?.stock) || 0)) });
+      }
+    }
+  } catch {
+    tallas = [];
+  }
+  if (tallas.length === 0) return { ok: false, error: "Deja al menos una talla." };
+
+  const supabase = await createClient();
+  try {
+    const costosObj: Record<string, number> = {};
+    for (const c of v.costos) costosObj[c.nombre] = c.valor;
+    const costo = v.costos.reduce((s, c) => s + c.valor, 0);
+    const medidas = parseMedidas(formData.get("medidas")) as Json;
+
+    // Filas actuales del grupo (para stock previo, extra y foto base).
+    const { data: filas } = grupoIds.length
+      ? await supabase.from("prendas").select("id, stock, extra, imagen_path").in("id", grupoIds)
+      : { data: [] as { id: string; stock: number; extra: unknown; imagen_path: string | null }[] };
+    const prev = new Map((filas ?? []).map((f) => [f.id, f]));
+    const fotoBase = (filas ?? []).find((f) => f.imagen_path)?.imagen_path ?? null;
+
+    // Foto y galería compartidas por todas las tallas.
+    const imagenPathNuevo = await subirImagen(supabase, formData.get("imagen"));
+    const conservar = leerConservar(formData.get("imagenes_conservar"));
+    const nuevas = await subirGaleria(supabase, formData.getAll("imagenes"));
+    const imagenesCompartidas = [...conservar, ...nuevas];
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const compartidos = {
+      nombre: v.nombre,
+      categoria: v.categoria || null,
+      color: v.color || null,
+      descripcion: v.descripcion || null,
+      observaciones: v.observaciones || null,
+      composicion: v.composicion || null,
+      medidas,
+      precio: v.precio,
+      costo,
+      costos: costosObj,
+      stock_minimo: v.stock_minimo,
+      destacado: v.destacado,
+    };
+
+    const enviadas = new Set<string>();
+    for (const t of tallas) {
+      if (t.id && prev.has(t.id)) {
+        enviadas.add(t.id);
+        const fila = prev.get(t.id)!;
+        const extra: Record<string, unknown> = { ...((fila.extra ?? {}) as Record<string, unknown>) };
+        if (imagenesCompartidas.length) extra.imagenes = imagenesCompartidas; else delete extra.imagenes;
+        const upd: TablesUpdate<"prendas"> = { ...compartidos, talla: t.talla, stock: t.stock, extra: extra as TablesUpdate<"prendas">["extra"] };
+        if (imagenPathNuevo) upd.imagen_path = imagenPathNuevo;
+        const { error } = await supabase.from("prendas").update(upd).eq("id", t.id);
+        if (error) throw new Error(error.message);
+        if (fila.stock !== t.stock) {
+          await supabase.from("movimientos_inventario").insert({
+            prenda_id: t.id, prenda_nombre: v.nombre, tipo: "AJUSTE",
+            cantidad: Math.abs(t.stock - fila.stock), stock_anterior: fila.stock, stock_nuevo: t.stock,
+            referencia: "Ajuste manual", usuario_email: user?.email ?? null,
+          });
+        }
+      } else {
+        // Talla nueva → fila nueva del producto.
+        const { data: codigo, error: errCod } = await supabase.rpc("siguiente_consecutivo", { p_entidad: "PRENDA" });
+        if (errCod) throw new Error(errCod.message);
+        const extra = imagenesCompartidas.length ? { imagenes: imagenesCompartidas } : {};
+        const { data: nueva, error } = await supabase
+          .from("prendas")
+          .insert({ ...compartidos, codigo, talla: t.talla, stock: t.stock, imagen_path: imagenPathNuevo ?? fotoBase, extra })
+          .select("id, nombre")
+          .single();
+        if (error) throw new Error(error.message);
+        if (t.stock > 0) {
+          await supabase.from("movimientos_inventario").insert({
+            prenda_id: nueva.id, prenda_nombre: nueva.nombre, tipo: "ENTRADA",
+            cantidad: t.stock, stock_anterior: 0, stock_nuevo: t.stock,
+            referencia: "Talla agregada", usuario_email: user?.email ?? null,
+          });
+        }
+      }
+    }
+
+    // Tallas quitadas → se desactivan (no se borran).
+    for (const id of grupoIds) {
+      if (!enviadas.has(id)) await supabase.from("prendas").update({ activo: false }).eq("id", id);
+    }
+
+    revalidatePath("/prendas");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al actualizar el producto" };
+  }
+}
+
 /** Nada se borra si tiene historial: se marca activo = false. */
 export async function desactivarPrenda(id: string): Promise<ResultadoAccion> {
   const supabase = await createClient();

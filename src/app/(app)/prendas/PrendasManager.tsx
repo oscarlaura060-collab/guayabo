@@ -13,9 +13,14 @@ import { urlImagenPrenda, estadoStock } from "@/lib/prendas";
 import type { CatalogosPrenda } from "@/lib/listas";
 import type { Tables } from "@/types/database.types";
 import { PrendaForm } from "./PrendaForm";
-import { crearPrendaMultitalla, actualizarPrenda, desactivarPrenda } from "./actions";
+import { crearPrendaMultitalla, actualizarPrendaGrupo, desactivarPrenda } from "./actions";
 
 type Prenda = Tables<"prendas">;
+
+/** Normaliza para agrupar por nombre sin importar tildes/mayúsculas. */
+function norm(s: string | null): string {
+  return (s ?? "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
 
 export function PrendasManager({
   prendas,
@@ -58,10 +63,10 @@ export function PrendasManager({
 
   async function onGuardar(fd: FormData) {
     const res = modal.esEdicion && modal.prenda
-      ? await actualizarPrenda(modal.prenda.id, fd)
+      ? await actualizarPrendaGrupo(fd)
       : await crearPrendaMultitalla(fd);
     if (res.ok) {
-      toast(modal.esEdicion ? "Prenda actualizada" : "Prenda(s) creada(s)", "exito");
+      toast(modal.esEdicion ? "Producto actualizado" : "Prenda(s) creada(s)", "exito");
       setModal({ abierto: false, prenda: null, esEdicion: false });
       router.refresh();
     } else {
@@ -268,6 +273,11 @@ export function PrendasManager({
           prenda={modal.prenda}
           catalogos={catalogos}
           esEdicion={modal.esEdicion}
+          hermanas={
+            modal.esEdicion && modal.prenda
+              ? prendas.filter((x) => norm(x.nombre) === norm(modal.prenda!.nombre) && (x.color ?? "") === (modal.prenda!.color ?? ""))
+              : []
+          }
           onGuardar={onGuardar}
           onCancelar={() => setModal({ abierto: false, prenda: null, esEdicion: false })}
         />
