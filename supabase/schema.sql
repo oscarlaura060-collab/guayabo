@@ -567,3 +567,77 @@ create policy comprobantes_delete on storage.objects for delete to authenticated
 -- 6. Semillas mínimas (config, catálogos y consecutivos)
 --    Ver supabase/seed.sql para los valores iniciales de la marca GUAYABO.
 -- ------------------------------------------------------------
+
+-- ------------------------------------------------------------
+-- 7. Endurecimiento de seguridad (se ejecuta al final: los predicados de la
+--    sección 4 ya existen). Equivale a supabase/migrations/0002_endurecer_seguridad.sql
+-- ------------------------------------------------------------
+
+-- Guard de rol en RPCs SECURITY DEFINER (saltan RLS): un CONSULTA no escribe.
+create or replace function public.siguiente_consecutivo(p_entidad text)
+returns text language plpgsql security definer set search_path = public as $$
+declare v_prefijo text; v_digitos int; v_num int;
+begin
+  if not public.puede_escribir() then
+    raise exception 'No autorizado' using errcode = '42501';
+  end if;
+  update public.consecutivos set siguiente = siguiente + 1
+   where entidad = p_entidad
+  returning prefijo, digitos, siguiente - 1 into v_prefijo, v_digitos, v_num;
+  if not found then
+    raise exception 'Consecutivo no configurado para la entidad %', p_entidad;
+  end if;
+  return v_prefijo || '-' || lpad(v_num::text, v_digitos, '0');
+end $$;
+
+-- crear_venta: se añade el guard tras 'begin' (el cuerpo completo está arriba).
+do $$
+begin
+  execute replace(
+    pg_get_functiondef('public.crear_venta(jsonb,jsonb,jsonb)'::regprocedure),
+    E'begin\n',
+    E'begin\n  if not public.puede_escribir() then raise exception ''No autorizado'' using errcode = ''42501''; end if;\n'
+  );
+exception when others then null;
+end $$;
+
+-- Vistas financieras: respetan RLS; sin acceso anónimo.
+alter view public.ventas_por_dia set (security_invoker = on);
+alter view public.ventas_por_mes set (security_invoker = on);
+alter view public.top_prendas   set (security_invoker = on);
+revoke all on public.ventas_por_dia from anon;
+revoke all on public.ventas_por_mes from anon;
+revoke all on public.top_prendas   from anon;
+grant select on public.ventas_por_dia to authenticated;
+grant select on public.ventas_por_mes to authenticated;
+grant select on public.top_prendas   to authenticated;
+
+-- RPCs sensibles: sin ejecución anónima.
+revoke execute on function public.crear_venta(jsonb,jsonb,jsonb) from anon, public;
+grant  execute on function public.crear_venta(jsonb,jsonb,jsonb) to authenticated;
+revoke execute on function public.siguiente_consecutivo(text) from anon, public;
+grant  execute on function public.siguiente_consecutivo(text) to authenticated;
+
+-- Predicados de RLS: solo 'authenticated'.
+do $$
+declare r record;
+begin
+  for r in select oid::regprocedure as sig from pg_proc where pronamespace='public'::regnamespace
+           and proname in ('es_admin','perfil_activo','puede_escribir','rol_actual')
+  loop
+    execute format('revoke execute on function %s from anon, public', r.sig);
+    execute format('grant execute on function %s to authenticated', r.sig);
+  end loop;
+end $$;
+
+-- Funciones internas/de trigger: sin ejecución por RPC.
+do $$
+declare r record;
+begin
+  for r in select oid::regprocedure as sig from pg_proc where pronamespace='public'::regnamespace
+           and proname in ('tg_nuevo_usuario','tg_touch_updated_at','tg_pagos_recalcula',
+                           'tg_apartados_disponible','recalcular_pago_pedido','rls_auto_enable')
+  loop
+    execute format('revoke execute on function %s from anon, authenticated, public', r.sig);
+  end loop;
+end $$;
