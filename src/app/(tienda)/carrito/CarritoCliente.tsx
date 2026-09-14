@@ -11,18 +11,32 @@ import { crearSolicitud } from "./actions";
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2.5 text-sm outline-none";
 
+export interface Envio {
+  ciudad: string;
+  precio: number;
+}
+
+/** Normaliza para comparar ciudades sin importar tildes/mayúsculas. */
+function norm(s: string): string {
+  return s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 export function CarritoCliente({
   nombreMarca,
   whatsapp,
   pagoMetodo,
   pagoNumero,
   pagoTitular,
+  envios,
+  envioDefecto,
 }: {
   nombreMarca: string;
   whatsapp: string;
   pagoMetodo: string;
   pagoNumero: string;
   pagoTitular: string;
+  envios: Envio[];
+  envioDefecto: number;
 }) {
   const { items, total, setCantidad, quitar, limpiar } = useCarrito();
 
@@ -36,15 +50,33 @@ export function CarritoCliente({
   const [error, setError] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
 
+  // Envío según la ciudad escrita: coincidencia exacta > por defecto.
+  const ciudadMatch = ciudad.trim() ? envios.find((e) => norm(e.ciudad) === norm(ciudad)) : undefined;
+  const envioConocido = ciudad.trim() !== "" && (ciudadMatch !== undefined || envioDefecto > 0);
+  const envio = ciudadMatch ? ciudadMatch.precio : ciudad.trim() ? envioDefecto : 0;
+  const totalConEnvio = total + envio;
+
+  function textoEnvio() {
+    if (!ciudad.trim()) return "Escribe tu ciudad para calcular el envío";
+    if (!envioConocido) return "Envío por confirmar por WhatsApp";
+    if (envio === 0) return "Envío gratis";
+    return pesos(envio);
+  }
+
   function construirMensaje() {
     const lineas = items.map(
       (it) =>
         `• ${it.nombre} — Talla ${it.talla ?? "-"}, Color ${it.color ?? "-"} x${it.cantidad} — ${pesos(it.precio * it.cantidad)}`,
     );
+    const lineaEnvio = envioConocido
+      ? `Envío (${ciudad}): ${envio === 0 ? "Gratis" : pesos(envio)}`
+      : `Envío (${ciudad || "-"}): por confirmar`;
     return (
       `Hola ${EMOJI.saludo}, quiero hacer un pedido en ${nombreMarca}:\n\n` +
       `${lineas.join("\n")}\n` +
-      `Total: ${pesos(total)}\n\n` +
+      `Subtotal: ${pesos(total)}\n` +
+      `${lineaEnvio}\n` +
+      `Total: ${pesos(totalConEnvio)}\n\n` +
       `Mis datos:\n` +
       `${EMOJI.usuario} Nombre: ${nombre}\n` +
       `${EMOJI.cedula} Cédula: ${cedula || "-"}\n` +
@@ -70,7 +102,8 @@ export function CarritoCliente({
       ciudad,
       direccion,
       items,
-      total,
+      envio,
+      total: totalConEnvio,
     });
     setEnviando(false);
     // Abrir WhatsApp con el pedido y los datos, y vaciar el carrito.
@@ -133,10 +166,18 @@ export function CarritoCliente({
 
       {/* Datos + pago */}
       <div className="flex flex-col gap-4">
-        <div className="rounded-2xl border p-4" style={{ borderColor: "rgba(0,0,0,.1)" }}>
-          <div className="flex items-center justify-between">
-            <span className="opacity-70">Total</span>
-            <span className="text-2xl font-bold" style={{ fontFamily: "var(--font-fraunces, serif)" }}>{pesos(total)}</span>
+        <div className="flex flex-col gap-1.5 rounded-2xl border p-4" style={{ borderColor: "rgba(0,0,0,.1)" }}>
+          <div className="flex items-center justify-between text-sm">
+            <span className="opacity-70">Subtotal</span>
+            <span className="tabular-nums">{pesos(total)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="opacity-70">Envío</span>
+            <span className="tabular-nums" style={{ color: envioConocido ? undefined : "#b8860b" }}>{textoEnvio()}</span>
+          </div>
+          <div className="mt-1 flex items-center justify-between border-t pt-2" style={{ borderColor: "rgba(0,0,0,.1)" }}>
+            <span className="font-semibold">Total</span>
+            <span className="text-2xl font-bold" style={{ fontFamily: "var(--font-fraunces, serif)" }}>{pesos(totalConEnvio)}</span>
           </div>
         </div>
 

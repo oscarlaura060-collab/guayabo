@@ -10,7 +10,7 @@ export default async function PedidosWebPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("solicitudes_web")
-    .select("id, codigo, created_at, cliente_nombre, cedula, telefono, email, ciudad, direccion, items, total, estado, notas")
+    .select("id, codigo, created_at, cliente_nombre, cedula, telefono, email, ciudad, direccion, items, envio, total, estado, notas")
     .order("created_at", { ascending: false })
     .limit(300);
 

@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   Globe,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const SECCIONES: Seccion[] = [
   { href: "/inventario", label: "Inventario", icon: Boxes, roles: TODOS },
   { href: "/clientes", label: "Clientes", icon: Users, roles: TODOS },
   { href: "/pagos", label: "Pagos", icon: CreditCard, roles: TODOS },
+  { href: "/envios", label: "Envíos", icon: Truck, roles: SOLO_ADMIN },
   { href: "/gastos", label: "Gastos", icon: Receipt, roles: SOLO_ADMIN },
   { href: "/utilidades", label: "Utilidades", icon: TrendingUp, roles: SOLO_ADMIN },
   { href: "/reportes", label: "Reportes", icon: BarChart3, roles: TODOS },

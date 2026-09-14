@@ -249,6 +249,30 @@ export type Database = {
         }
         Relationships: []
       }
+      envios: {
+        Row: {
+          activo: boolean
+          ciudad: string
+          created_at: string
+          id: string
+          precio: number
+        }
+        Insert: {
+          activo?: boolean
+          ciudad: string
+          created_at?: string
+          id?: string
+          precio?: number
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string
+          created_at?: string
+          id?: string
+          precio?: number
+        }
+        Relationships: []
+      }
       gastos: {
         Row: {
           activo: boolean
@@ -742,6 +766,7 @@ export type Database = {
           created_at: string
           direccion: string | null
           email: string | null
+          envio: number
           estado: string
           id: string
           items: Json
@@ -757,6 +782,7 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           email?: string | null
+          envio?: number
           estado?: string
           id?: string
           items?: Json
@@ -772,6 +798,7 @@ export type Database = {
           created_at?: string
           direccion?: string | null
           email?: string | null
+          envio?: number
           estado?: string
           id?: string
           items?: Json
