@@ -225,6 +225,35 @@ create table if not exists public.movimientos_inventario (
   created_at timestamptz not null default now()
 );
 
+-- Tarifa de envío por ciudad (se suma en el carrito de la vitrina).
+create table if not exists public.envios (
+  id uuid primary key default gen_random_uuid(),
+  ciudad text not null,
+  precio numeric not null default 0,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Pedidos hechos desde la vitrina (carrito). El equipo los confirma en el panel.
+-- envio/total son la "fotografía" calculada en el servidor al enviarse.
+create table if not exists public.solicitudes_web (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  codigo text,
+  cliente_nombre text,
+  cedula text,
+  telefono text,
+  email text,
+  ciudad text,
+  direccion text,
+  items jsonb not null default '[]'::jsonb,
+  envio numeric not null default 0,
+  total numeric not null default 0,
+  estado text not null default 'Nueva',
+  notas text,
+  venta_id uuid references public.pedidos(id) on delete set null
+);
+
 create index if not exists idx_pedidos_cliente on public.pedidos(cliente_id);
 create index if not exists idx_pedidos_fecha on public.pedidos(fecha);
 create index if not exists idx_pedidos_tipo on public.pedidos(tipo);
@@ -442,6 +471,24 @@ left join public.pedidos pe on pe.id = pi.pedido_id and pe.activo = true and pe.
 group by pr.id, pr.nombre, pr.categoria, pr.talla, pr.color
 order by unidades desc;
 
+-- Vistas PÚBLICAS de la vitrina. Son SECURITY DEFINER a propósito: exponen solo
+-- columnas seguras para que el rol anónimo lea el catálogo sin poder acceder a
+-- la tabla `prendas` (que incluye costos). El linter las marca; es intencional.
+create or replace view public.catalogo_publico as
+select id, nombre, categoria, talla, color, precio, stock, stock_minimo,
+       descripcion, composicion, medidas, imagen_path, extra, destacado,
+       vendidas, created_at
+from public.prendas where activo = true;
+
+create or replace view public.apartados_activos_publico as
+select prenda_id, sum(cantidad)::integer as reservado
+from public.apartados
+where activo = true and estado not in ('Entregado','Cancelado') and prenda_id is not null
+group by prenda_id;
+
+grant select on public.catalogo_publico to anon, authenticated;
+grant select on public.apartados_activos_publico to anon, authenticated;
+
 -- ------------------------------------------------------------
 -- 4. Row Level Security
 --   ADMINISTRADOR: todo.  VENDEDOR: ventas/pedidos/clientes/pagos/inventario.
@@ -536,6 +583,33 @@ begin
     execute format('create policy %I_del on public.%I for delete to authenticated using (public.es_admin());', t, t);
   end loop;
 end $$;
+
+-- Envíos: la vitrina (anon) solo ve ciudades activas; solo el admin escribe.
+alter table public.envios enable row level security;
+drop policy if exists envios_sel_anon on public.envios;
+create policy envios_sel_anon on public.envios for select to anon using (activo = true);
+drop policy if exists envios_sel_auth on public.envios;
+create policy envios_sel_auth on public.envios for select to authenticated using (public.perfil_activo());
+drop policy if exists envios_ins on public.envios;
+create policy envios_ins on public.envios for insert to authenticated with check (public.es_admin());
+drop policy if exists envios_upd on public.envios;
+create policy envios_upd on public.envios for update to authenticated using (public.es_admin()) with check (public.es_admin());
+drop policy if exists envios_del on public.envios;
+create policy envios_del on public.envios for delete to authenticated using (public.es_admin());
+
+-- Solicitudes web: cualquiera (anon) puede CREAR su pedido; solo el staff las
+-- lee/edita. Nunca se expone la lista de solicitudes al público.
+alter table public.solicitudes_web enable row level security;
+drop policy if exists solicitudes_sel on public.solicitudes_web;
+create policy solicitudes_sel on public.solicitudes_web for select to authenticated using (public.perfil_activo());
+drop policy if exists solicitudes_ins_anon on public.solicitudes_web;
+create policy solicitudes_ins_anon on public.solicitudes_web for insert to anon with check (true);
+drop policy if exists solicitudes_ins_auth on public.solicitudes_web;
+create policy solicitudes_ins_auth on public.solicitudes_web for insert to authenticated with check (true);
+drop policy if exists solicitudes_upd on public.solicitudes_web;
+create policy solicitudes_upd on public.solicitudes_web for update to authenticated using (public.puede_escribir()) with check (public.puede_escribir());
+drop policy if exists solicitudes_del on public.solicitudes_web;
+create policy solicitudes_del on public.solicitudes_web for delete to authenticated using (public.es_admin());
 
 -- ------------------------------------------------------------
 -- 5. Storage (buckets + políticas)

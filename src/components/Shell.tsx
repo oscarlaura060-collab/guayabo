@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X, Search, LogOut } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { seccionesVisibles } from "@/lib/nav";
+import { adminHref } from "@/lib/adminPath";
 import type { Rol } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -27,19 +28,20 @@ export function Shell({ nombreMarca, logoUrl, rol, usuario, children }: ShellPro
   async function salir() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push(adminHref("/login"));
     router.refresh();
   }
 
   const menu = (
     <nav className="flex flex-col gap-1.5">
       {secciones.map((s) => {
-        const activo = pathname === s.href || pathname.startsWith(s.href + "/");
+        const href = adminHref(s.href);
+        const activo = pathname === href || pathname.startsWith(href + "/");
         const Icono = s.icon;
         return (
           <Link
             key={s.href}
-            href={s.href}
+            href={href}
             className="gy-pill"
             data-activo={activo}
             onClick={() => setAbierto(false)}

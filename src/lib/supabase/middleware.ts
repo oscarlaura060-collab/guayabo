@@ -54,13 +54,61 @@ export async function actualizarSesion(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const esAdmin = ADMIN.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const esRutaAdmin = (p: string) => ADMIN.some((a) => p === a || p.startsWith(a + "/"));
 
-  if (!user && esAdmin) {
+  // Copia las cookies de sesión (refrescadas por getUser) a otra respuesta,
+  // imprescindible para no romper la sesión al redirigir/reescribir.
+  const conCookies = (nr: NextResponse) => {
+    response.cookies.getAll().forEach((c) => nr.cookies.set(c));
+    return nr;
+  };
+
+  // Prefijo opcional del panel ("ruta no predecible"). Vacío => comportamiento
+  // por defecto (idéntico al anterior).
+  const base = (process.env.NEXT_PUBLIC_ADMIN_PATH || "").trim().replace(/\/+$/, "");
+
+  if (base) {
+    const dentroPrefijo = pathname === base || pathname.startsWith(base + "/");
+
+    if (dentroPrefijo) {
+      const interna = pathname.slice(base.length) || "/";
+      // Sin sesión y ruta de panel (no el login) → al login del prefijo.
+      if (esRutaAdmin(interna) && !user) {
+        const url = request.nextUrl.clone();
+        url.pathname = base + "/login";
+        url.searchParams.set("redirect", interna);
+        return conCookies(NextResponse.redirect(url));
+      }
+      // Servir la ruta real sin exponer el prefijo internamente.
+      const url = request.nextUrl.clone();
+      url.pathname = interna;
+      return conCookies(NextResponse.rewrite(url));
+    }
+
+    // Rutas "desnudas" del panel o del login, accedidas sin el prefijo.
+    if (esRutaAdmin(pathname) || pathname === "/login") {
+      if (user) {
+        // Staff con sesión: mándalo al prefijo (los enlaces antiguos siguen sirviendo).
+        const url = request.nextUrl.clone();
+        url.pathname = base + pathname;
+        return conCookies(NextResponse.redirect(url));
+      }
+      // Sin sesión: ocultar (404) en vez de confirmar que existe.
+      const url = request.nextUrl.clone();
+      url.pathname = "/__no-encontrado-" + Math.random().toString(36).slice(2, 8);
+      return conCookies(NextResponse.rewrite(url));
+    }
+
+    // Vitrina pública: pasa sin tocar.
+    return response;
+  }
+
+  // --- Sin prefijo: comportamiento por defecto ---
+  if (!user && esRutaAdmin(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+    return conCookies(NextResponse.redirect(url));
   }
 
   return response;

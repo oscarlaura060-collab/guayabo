@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { adminHref } from "@/lib/adminPath";
 import { Button } from "@/components/ui/Button";
 
 /** Cuenta compartida de la app: el usuario solo escribe la clave de acceso. */
@@ -88,7 +89,7 @@ export function LoginForm() {
     }
 
     limpiarIntentos();
-    router.push(redirect);
+    router.push(adminHref(redirect));
     router.refresh();
   }
 
