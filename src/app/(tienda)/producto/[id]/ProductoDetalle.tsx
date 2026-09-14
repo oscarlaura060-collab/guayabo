@@ -69,13 +69,13 @@ export function ProductoDetalle({ producto }: { producto: Producto }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-5 pb-10">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-5 pb-10 lg:max-w-lg">
       {/* Imagen */}
       <div className="w-full">
         <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl" style={{ background: "color-mix(in srgb, var(--color-texto) 5%, transparent)" }}>
           {imagenes[imgActiva] ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imagenes[imgActiva]} alt={producto.nombre} className="h-full w-full object-cover" />
+            <img src={imagenes[imgActiva]} alt={producto.nombre} className="h-full w-full object-cover" decoding="async" fetchPriority="high" />
           ) : (
             <div className="grid h-full place-items-center opacity-30"><Shirt size={56} /></div>
           )}
@@ -85,7 +85,7 @@ export function ProductoDetalle({ producto }: { producto: Producto }) {
             {imagenes.map((src, i) => (
               <button key={src} onClick={() => setImgActiva(i)} className="h-16 w-14 shrink-0 overflow-hidden rounded-lg border-2" style={{ borderColor: i === imgActiva ? "var(--color-secundario)" : "transparent" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
               </button>
             ))}
           </div>

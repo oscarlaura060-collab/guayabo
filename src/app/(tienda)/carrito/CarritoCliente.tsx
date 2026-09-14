@@ -142,7 +142,7 @@ export function CarritoCliente({
             <div className="h-20 w-16 shrink-0 overflow-hidden rounded-xl" style={{ background: "color-mix(in srgb, var(--color-texto) 6%, transparent)" }}>
               {it.imagen ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={it.imagen} alt={it.nombre} className="h-full w-full object-cover" />
+                <img src={it.imagen} alt={it.nombre} className="h-full w-full object-cover" loading="lazy" decoding="async" />
               ) : (
                 <div className="grid h-full place-items-center opacity-30"><Shirt size={22} /></div>
               )}
