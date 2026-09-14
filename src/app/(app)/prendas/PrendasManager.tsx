@@ -29,21 +29,31 @@ export function PrendasManager({
   const router = useRouter();
   const { toast } = useToast();
   const [q, setQ] = useState("");
+  const [cat, setCat] = useState<string | null>(null);
+  const [stockFiltro, setStockFiltro] = useState<"todas" | "bajo" | "agotado">("todas");
   const [modal, setModal] = useState<{ abierto: boolean; prenda: Prenda | null; esEdicion: boolean }>({
     abierto: false,
     prenda: null,
     esEdicion: false,
   });
 
+  const categorias = useMemo(
+    () => [...new Set(prendas.map((p) => p.categoria).filter(Boolean) as string[])].sort(),
+    [prendas],
+  );
+
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return prendas;
-    return prendas.filter((p) =>
-      [p.nombre, p.codigo, p.categoria, p.color, p.talla]
+    return prendas.filter((p) => {
+      if (cat && p.categoria !== cat) return false;
+      if (stockFiltro === "bajo" && !(p.stock > 0 && p.stock <= p.stock_minimo)) return false;
+      if (stockFiltro === "agotado" && p.stock > 0) return false;
+      if (!t) return true;
+      return [p.nombre, p.codigo, p.categoria, p.color, p.talla]
         .filter(Boolean)
-        .some((x) => String(x).toLowerCase().includes(t)),
-    );
-  }, [prendas, q]);
+        .some((x) => String(x).toLowerCase().includes(t));
+    });
+  }, [prendas, q, cat, stockFiltro]);
 
   async function onGuardar(fd: FormData) {
     const res = modal.esEdicion && modal.prenda
@@ -96,6 +106,40 @@ export function PrendasManager({
             <Plus size={17} /> Nueva prenda
           </Button>
         )}
+      </div>
+
+      {/* Filtros */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {["todas", "bajo", "agotado"].map((f) => (
+          <button
+            key={f}
+            onClick={() => setStockFiltro(f as typeof stockFiltro)}
+            className="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+            style={{
+              borderColor: stockFiltro === f ? "var(--color-secundario)" : "var(--borde-suave)",
+              background: stockFiltro === f ? "color-mix(in srgb, var(--color-secundario) 12%, transparent)" : "transparent",
+              color: stockFiltro === f ? "var(--color-secundario)" : "inherit",
+            }}
+          >
+            {f === "todas" ? "Todas" : f === "bajo" ? "Stock bajo" : "Agotadas"}
+          </button>
+        ))}
+        {categorias.length > 0 && <span className="mx-1 h-5 w-px" style={{ background: "var(--borde-suave)" }} />}
+        {categorias.map((c) => (
+          <button
+            key={c}
+            onClick={() => setCat(cat === c ? null : c)}
+            className="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+            style={{
+              borderColor: cat === c ? "var(--color-secundario)" : "var(--borde-suave)",
+              background: cat === c ? "color-mix(in srgb, var(--color-secundario) 12%, transparent)" : "transparent",
+              color: cat === c ? "var(--color-secundario)" : "inherit",
+            }}
+          >
+            {c}
+          </button>
+        ))}
+        <span className="ml-auto text-sm" style={{ color: "var(--tenue)" }}>{lista.length} prenda(s)</span>
       </div>
 
       {lista.length === 0 ? (
