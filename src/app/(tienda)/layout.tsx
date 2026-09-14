@@ -2,6 +2,8 @@ import Link from "next/link";
 import { MessageCircle } from "lucide-react";
 import { getConfig } from "@/lib/config";
 import { WHATSAPP_DEFECTO, linkWhatsApp } from "@/lib/tienda";
+import { CarritoProvider } from "@/lib/carrito";
+import { EMOJI } from "@/lib/emoji";
 import { TiendaHeader } from "@/components/tienda/TiendaHeader";
 
 export default async function TiendaLayout({
@@ -14,9 +16,10 @@ export default async function TiendaLayout({
   const lema = config.LEMA || "Moda colombiana, alegre y con actitud.";
   const anio = new Date().getFullYear();
 
-  const waSaludo = linkWhatsApp(whatsapp, `Hola 👋, quiero saber más sobre ${nombre}.`);
+  const waSaludo = linkWhatsApp(whatsapp, `Hola ${EMOJI.saludo}, quiero saber más sobre ${nombre}.`);
 
   return (
+    <CarritoProvider>
     <div className="flex min-h-dvh flex-col" style={{ background: "var(--color-fondo)", color: "var(--color-texto)" }}>
       <TiendaHeader nombre={nombre} logoUrl={logoUrl} waSaludo={waSaludo} />
 
@@ -50,5 +53,6 @@ export default async function TiendaLayout({
         <MessageCircle size={26} />
       </a>
     </div>
+    </CarritoProvider>
   );
 }

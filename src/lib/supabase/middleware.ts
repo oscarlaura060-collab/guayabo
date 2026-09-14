@@ -8,6 +8,7 @@ import type { Database } from "@/types/database.types";
  */
 const ADMIN = [
   "/dashboard",
+  "/pedidos-web",
   "/prendas",
   "/inventario",
   "/apartados",

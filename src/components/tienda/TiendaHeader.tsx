@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import { Menu, X, ShoppingBag, ShoppingCart } from "lucide-react";
+import { useCarrito } from "@/lib/carrito";
 
 export function TiendaHeader({
   nombre,
@@ -14,11 +15,23 @@ export function TiendaHeader({
   waSaludo: string;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const { cantidadTotal } = useCarrito();
 
   const enlaces = [
     { href: "/", texto: "Inicio" },
     { href: "/catalogo", texto: "Catálogo" },
   ];
+
+  const CarritoIcono = (
+    <Link href="/carrito" className="relative inline-flex" aria-label="Carrito" onClick={() => setAbierto(false)}>
+      <ShoppingCart size={22} />
+      {cantidadTotal > 0 && (
+        <span suppressHydrationWarning className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold text-white" style={{ background: "var(--color-secundario)" }}>
+          {cantidadTotal}
+        </span>
+      )}
+    </Link>
+  );
 
   return (
     <header
@@ -51,11 +64,15 @@ export function TiendaHeader({
           >
             <ShoppingBag size={16} /> WhatsApp
           </a>
+          {CarritoIcono}
         </nav>
 
-        <button className="sm:hidden" onClick={() => setAbierto((x) => !x)} aria-label="Menú">
-          {abierto ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-4 sm:hidden">
+          {CarritoIcono}
+          <button onClick={() => setAbierto((x) => !x)} aria-label="Menú">
+            {abierto ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
 
       {abierto && (

@@ -57,9 +57,8 @@ interface FilaCatalogo {
   created_at: string | null;
 }
 
-/** Agrupa las filas del catálogo (una por talla/color) en productos.
- *  `reservados`: ids de variante con apartados activos (para el estado APARTADO). */
-function agrupar(filas: FilaCatalogo[], reservados: Set<string> = new Set()): Producto[] {
+/** Agrupa las filas del catálogo (una por talla/color) en productos. */
+function agrupar(filas: FilaCatalogo[]): Producto[] {
   const mapa = new Map<string, FilaCatalogo[]>();
   for (const f of filas) {
     if (!f.id || !f.nombre) continue;
@@ -94,12 +93,6 @@ function agrupar(filas: FilaCatalogo[], reservados: Set<string> = new Set()): Pr
     const repr = variantes.find((v) => v.stock > 0 && v.imagenes.length) ?? variantes.find((v) => v.imagenes.length) ?? variantes[0];
     const primera = filasProd[0];
 
-    // Estado: si está agotado pero alguna variante tiene apartado activo,
-    // se muestra "APARTADO" (reservado), no "AGOTADO".
-    const tieneReserva = variantes.some((v) => reservados.has(v.id));
-    let estado = estadoDe(stockTotal, umbral);
-    if (estado === "AGOTADO" && tieneReserva) estado = "APARTADO";
-
     productos.push({
       id: repr.id,
       nombre: primera.nombre!.trim(),
@@ -109,7 +102,7 @@ function agrupar(filas: FilaCatalogo[], reservados: Set<string> = new Set()): Pr
       precioMin: precios.length ? Math.min(...precios) : 0,
       precioMax: precios.length ? Math.max(...precios) : 0,
       stockTotal,
-      estado,
+      estado: estadoDe(stockTotal, umbral),
       tallas,
       colores,
       imagenes,
@@ -123,29 +116,14 @@ function agrupar(filas: FilaCatalogo[], reservados: Set<string> = new Set()): Pr
   return productos;
 }
 
-/** Ids de variante (prenda) con apartados activos. */
-async function getReservados(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<Set<string>> {
-  const { data } = await supabase.from("apartados_activos_publico").select("prenda_id, reservado");
-  const set = new Set<string>();
-  for (const r of data ?? []) {
-    if (r.prenda_id && Number(r.reservado) > 0) set.add(r.prenda_id);
-  }
-  return set;
-}
-
 /** Todos los productos de la vitrina (agrupados). */
 export async function getProductos(): Promise<Producto[]> {
   const supabase = await createClient();
-  const [{ data }, reservados] = await Promise.all([
-    supabase
-      .from("catalogo_publico")
-      .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
-      .order("created_at", { ascending: false }),
-    getReservados(supabase),
-  ]);
-  return agrupar((data ?? []) as FilaCatalogo[], reservados);
+  const { data } = await supabase
+    .from("catalogo_publico")
+    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
+    .order("created_at", { ascending: false });
+  return agrupar((data ?? []) as FilaCatalogo[]);
 }
 
 /** Un producto por el id de cualquiera de sus variantes. */
@@ -158,13 +136,10 @@ export async function getProducto(varianteId: string): Promise<Producto | null> 
     .maybeSingle();
   if (!fila?.nombre) return null;
 
-  const [{ data }, reservados] = await Promise.all([
-    supabase
-      .from("catalogo_publico")
-      .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
-      .eq("nombre", fila.nombre),
-    getReservados(supabase),
-  ]);
-  const productos = agrupar((data ?? []) as FilaCatalogo[], reservados);
+  const { data } = await supabase
+    .from("catalogo_publico")
+    .select("id, nombre, categoria, talla, color, precio, stock, stock_minimo, descripcion, imagen_path, extra, destacado, created_at")
+    .eq("nombre", fila.nombre);
+  const productos = agrupar((data ?? []) as FilaCatalogo[]);
   return productos[0] ?? null;
 }
