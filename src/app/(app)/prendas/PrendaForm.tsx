@@ -46,6 +46,7 @@ export function PrendaForm({
   );
   const [imagen, setImagen] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(prenda ? urlImagenPrenda(prenda) : null);
+  const [destacado, setDestacado] = useState(prenda?.destacado ?? false);
   const [enviando, setEnviando] = useState(false);
 
   const costoTotal = useMemo(
@@ -77,6 +78,7 @@ export function PrendaForm({
     fd.set("stock_minimo", stockMin || "0");
     fd.set("descripcion", descripcion);
     fd.set("observaciones", observaciones);
+    fd.set("destacado", destacado ? "on" : "");
     fd.set(
       "costos",
       JSON.stringify(
@@ -227,6 +229,11 @@ export function PrendaForm({
       <label className="flex flex-col gap-1 text-sm font-medium">
         Observaciones
         <textarea className={inputCls} style={inputStyle} rows={2} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+      </label>
+
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" checked={destacado} onChange={(e) => setDestacado(e.target.checked)} />
+        Destacar en la tienda (aparece en “Destacados” de la vitrina)
       </label>
 
       <div className="flex justify-end gap-2">

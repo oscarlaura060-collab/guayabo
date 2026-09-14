@@ -674,6 +674,7 @@ export type Database = {
           costos: Json
           created_at: string
           descripcion: string | null
+          destacado: boolean
           extra: Json
           id: string
           imagen_path: string | null
@@ -695,6 +696,7 @@ export type Database = {
           costos?: Json
           created_at?: string
           descripcion?: string | null
+          destacado?: boolean
           extra?: Json
           id?: string
           imagen_path?: string | null
@@ -716,6 +718,7 @@ export type Database = {
           costos?: Json
           created_at?: string
           descripcion?: string | null
+          destacado?: boolean
           extra?: Json
           id?: string
           imagen_path?: string | null
@@ -732,6 +735,25 @@ export type Database = {
       }
     }
     Views: {
+      catalogo_publico: {
+        Row: {
+          categoria: string | null
+          color: string | null
+          created_at: string | null
+          descripcion: string | null
+          destacado: boolean | null
+          extra: Json | null
+          id: string | null
+          imagen_path: string | null
+          nombre: string | null
+          precio: number | null
+          stock: number | null
+          stock_minimo: number | null
+          talla: string | null
+          vendidas: number | null
+        }
+        Relationships: []
+      }
       top_prendas: {
         Row: {
           categoria: string | null

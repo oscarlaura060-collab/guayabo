@@ -2,8 +2,23 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
 
-/** Rutas públicas (no requieren sesión). */
-const PUBLICAS = ["/login", "/auth"];
+/**
+ * Rutas del panel administrativo: SOLO estas exigen sesión. Todo lo demás
+ * (la vitrina pública: inicio, catálogo, producto) es de acceso libre.
+ */
+const ADMIN = [
+  "/dashboard",
+  "/prendas",
+  "/inventario",
+  "/apartados",
+  "/ventas",
+  "/pagos",
+  "/gastos",
+  "/utilidades",
+  "/reportes",
+  "/clientes",
+  "/configuracion",
+];
 
 /**
  * Refresca la sesión en cada petición y protege todo salvo las rutas públicas.
@@ -37,9 +52,9 @@ export async function actualizarSesion(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const esPublica = PUBLICAS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const esAdmin = ADMIN.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-  if (!user && !esPublica) {
+  if (!user && esAdmin) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", pathname);
