@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
 import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada } from "./actions";
+import { comprimirImagen } from "@/lib/imagen";
 
 export interface ConfigRow {
   clave: string;
@@ -92,15 +93,39 @@ export function ConfiguracionManager({
     }
   })();
   const [subiendoPortada, setSubiendoPortada] = useState(false);
+  const [estadoPortada, setEstadoPortada] = useState("");
   async function onPortada(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    fd.set("conservar", JSON.stringify(portadaActual));
+    const input = e.currentTarget.querySelector<HTMLInputElement>('input[name="portada"]');
+    const archivos = Array.from(input?.files ?? []);
+    if (archivos.length === 0) { toast("Elige al menos una imagen.", "error"); return; }
+    const form = e.currentTarget;
+
     setSubiendoPortada(true);
-    const res = await subirFotosPortada(fd);
-    setSubiendoPortada(false);
-    if (res.ok) { toast("Fotos de portada actualizadas", "exito"); router.refresh(); }
-    else toast(res.error ?? "Error", "error");
+    setEstadoPortada("Optimizando imagen…");
+    try {
+      // Optimización del lado del cliente (banners grandes → WebP ~2000px).
+      const fd = new FormData();
+      fd.set("conservar", JSON.stringify(portadaActual));
+      for (const f of archivos) fd.append("portada", await comprimirImagen(f, { maxLado: 2000 }));
+
+      setEstadoPortada("Subiendo…");
+      const res = await subirFotosPortada(fd);
+      if (res.ok) {
+        setEstadoPortada("Imagen lista para publicar.");
+        toast("Fotos de portada actualizadas", "exito");
+        form.reset();
+        router.refresh();
+      } else {
+        setEstadoPortada("");
+        toast(res.error ?? "Esta imagen no pudo procesarse. Intenta nuevamente.", "error");
+      }
+    } catch {
+      setEstadoPortada("");
+      toast("Esta imagen no pudo procesarse. Intenta nuevamente.", "error");
+    } finally {
+      setSubiendoPortada(false);
+    }
   }
   async function quitarPortada(url: string) {
     const fd = new FormData();
@@ -242,9 +267,12 @@ export function ConfiguracionManager({
             )}
             <form onSubmit={onPortada} className="flex flex-wrap items-center gap-2">
               <input className={inputCls} style={inputStyle} name="portada" type="file" accept="image/*" multiple required />
-              <Button type="submit" disabled={subiendoPortada}>{subiendoPortada ? "Subiendo…" : "Agregar fotos"}</Button>
+              <Button type="submit" disabled={subiendoPortada}>{subiendoPortada ? (estadoPortada || "Subiendo…") : "Agregar fotos"}</Button>
+              {estadoPortada && !subiendoPortada && (
+                <span className="text-xs font-medium" style={{ color: "#3AA76D" }}>{estadoPortada}</span>
+              )}
             </form>
-            <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Se muestran en el carrusel del inicio. Si no subes ninguna, se usan las fotos de tus productos.</p>
+            <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Se optimizan automáticamente (WebP). Se muestran en el carrusel del inicio; si no subes ninguna, se usan las fotos de tus productos.</p>
           </div>
 
           <div className="mb-3 flex items-center justify-end gap-3">
