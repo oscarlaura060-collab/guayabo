@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Pencil, Archive, Shirt, Copy } from "lucide-react";
+import { Plus, Search, Pencil, Archive, Shirt, Copy, LayoutGrid, Rows3 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -31,6 +31,7 @@ export function PrendasManager({
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [stockFiltro, setStockFiltro] = useState<"todas" | "bajo" | "agotado">("todas");
+  const [vista, setVista] = useState<"tabla" | "tarjetas">("tabla");
   const [modal, setModal] = useState<{ abierto: boolean; prenda: Prenda | null; esEdicion: boolean }>({
     abierto: false,
     prenda: null,
@@ -88,6 +89,88 @@ export function PrendasManager({
     }
   }
 
+  // Acciones rápidas reutilizables (tabla y tarjetas).
+  function botones(p: Prenda) {
+    return (
+      <>
+        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => setModal({ abierto: true, prenda: p, esEdicion: true })} aria-label="Editar" title="Editar"><Pencil size={15} /></button>
+        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => duplicar(p)} aria-label="Duplicar" title="Duplicar"><Copy size={15} /></button>
+        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => onDesactivar(p)} aria-label="Desactivar" title="Desactivar"><Archive size={15} /></button>
+      </>
+    );
+  }
+
+  const tarjetasItems = lista.map((p) => {
+    const url = urlImagenPrenda(p);
+    const est = estadoStock(p.stock, p.stock_minimo);
+    return (
+      <div key={p.id} className="gy-card overflow-hidden">
+        <div className="relative aspect-square w-full" style={{ background: "var(--color-fondo)" }}>
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={p.nombre} className="h-full w-full object-cover" loading="lazy" />
+          ) : (
+            <div className="grid h-full place-items-center" style={{ color: "var(--tenue)" }}><Shirt size={28} /></div>
+          )}
+          <div className="absolute left-2 top-2"><StatusChip texto={est.etiqueta} color={est.color} /></div>
+        </div>
+        <div className="flex flex-col gap-1 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-sm font-semibold leading-tight">{p.nombre}</span>
+            <span className="gy-cifra shrink-0 text-sm">{pesos(p.precio)}</span>
+          </div>
+          <div className="text-xs" style={{ color: "var(--tenue)" }}>{[p.codigo, p.talla, p.color].filter(Boolean).join(" · ") || "—"}</div>
+          <div className="mt-1 flex items-center justify-between text-xs" style={{ color: "var(--tenue)" }}>
+            <span>Stock: <b style={{ color: "var(--color-texto)" }}>{p.stock}</b></span>
+            {puedeEscribir && <span className="flex gap-1">{botones(p)}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  });
+
+  const tabla = (
+    <div className="gy-table-wrap gy-card">
+      <table className="gy-table">
+        <thead>
+          <tr><th>Prenda</th><th>Categoría</th><th>Talla · Color</th><th>Precio</th><th>Stock</th><th>Estado</th>{puedeEscribir && <th></th>}</tr>
+        </thead>
+        <tbody>
+          {lista.map((p) => {
+            const url = urlImagenPrenda(p);
+            const est = estadoStock(p.stock, p.stock_minimo);
+            return (
+              <tr key={p.id}>
+                <td>
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--color-fondo)" }}>
+                      {url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={url} alt={p.nombre} className="h-full w-full object-cover" loading="lazy" />
+                      ) : (
+                        <div className="grid h-full place-items-center" style={{ color: "var(--tenue)" }}><Shirt size={16} /></div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.nombre}</div>
+                      <div className="text-xs" style={{ color: "var(--tenue)" }}>{p.codigo ?? "—"}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>{p.categoria ?? "—"}</td>
+                <td>{[p.talla, p.color].filter(Boolean).join(" · ") || "—"}</td>
+                <td className="num font-semibold">{pesos(p.precio)}</td>
+                <td className="num">{p.stock}</td>
+                <td><StatusChip texto={est.etiqueta} color={est.color} /></td>
+                {puedeEscribir && <td><span className="flex justify-end gap-1">{botones(p)}</span></td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -140,6 +223,17 @@ export function PrendasManager({
           </button>
         ))}
         <span className="ml-auto text-sm" style={{ color: "var(--tenue)" }}>{lista.length} prenda(s)</span>
+        {/* Alternar tabla/tarjetas (solo escritorio) */}
+        <div className="hidden overflow-hidden rounded-full border md:flex" style={{ borderColor: "var(--borde-suave)" }}>
+          <button onClick={() => setVista("tabla")} className="px-2.5 py-1.5" aria-label="Vista tabla" title="Tabla"
+            style={{ background: vista === "tabla" ? "var(--color-secundario)" : "transparent", color: vista === "tabla" ? "#fff" : "var(--tenue)" }}>
+            <Rows3 size={16} />
+          </button>
+          <button onClick={() => setVista("tarjetas")} className="px-2.5 py-1.5" aria-label="Vista tarjetas" title="Tarjetas"
+            style={{ background: vista === "tarjetas" ? "var(--color-secundario)" : "transparent", color: vista === "tarjetas" ? "#fff" : "var(--tenue)" }}>
+            <LayoutGrid size={16} />
+          </button>
+        </div>
       </div>
 
       {lista.length === 0 ? (
@@ -155,73 +249,14 @@ export function PrendasManager({
             ) : undefined
           }
         />
+      ) : vista === "tabla" ? (
+        <>
+          {/* Tabla en escritorio, tarjetas en móvil (para no forzar zoom) */}
+          <div className="hidden md:block">{tabla}</div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:hidden">{tarjetasItems}</div>
+        </>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {lista.map((p) => {
-            const url = urlImagenPrenda(p);
-            const est = estadoStock(p.stock, p.stock_minimo);
-            return (
-              <div key={p.id} className="gy-card overflow-hidden">
-                <div
-                  className="relative aspect-square w-full"
-                  style={{ background: "var(--color-fondo)" }}
-                >
-                  {url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={url} alt={p.nombre} className="h-full w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="grid h-full place-items-center" style={{ color: "var(--tenue)" }}>
-                      <Shirt size={28} />
-                    </div>
-                  )}
-                  <div className="absolute left-2 top-2">
-                    <StatusChip texto={est.etiqueta} color={est.color} />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-semibold leading-tight">{p.nombre}</span>
-                    <span className="gy-cifra shrink-0 text-sm">{pesos(p.precio)}</span>
-                  </div>
-                  <div className="text-xs" style={{ color: "var(--tenue)" }}>
-                    {[p.codigo, p.talla, p.color].filter(Boolean).join(" · ") || "—"}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between text-xs" style={{ color: "var(--tenue)" }}>
-                    <span>Stock: <b style={{ color: "var(--color-texto)" }}>{p.stock}</b></span>
-                    {puedeEscribir && (
-                      <span className="flex gap-1">
-                        <button
-                          className="gy-btn gy-btn-plano !p-1.5"
-                          onClick={() => setModal({ abierto: true, prenda: p, esEdicion: true })}
-                          aria-label="Editar"
-                          title="Editar"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          className="gy-btn gy-btn-plano !p-1.5"
-                          onClick={() => duplicar(p)}
-                          aria-label="Duplicar"
-                          title="Duplicar"
-                        >
-                          <Copy size={15} />
-                        </button>
-                        <button
-                          className="gy-btn gy-btn-plano !p-1.5"
-                          onClick={() => onDesactivar(p)}
-                          aria-label="Desactivar"
-                          title="Desactivar"
-                        >
-                          <Archive size={15} />
-                        </button>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{tarjetasItems}</div>
       )}
 
       <Modal
