@@ -70,6 +70,36 @@ async function subirImagen(
   return path;
 }
 
+/** Sube varias fotos adicionales al bucket `prendas` y devuelve sus paths. */
+async function subirGaleria(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  archivos: FormDataEntryValue[],
+): Promise<string[]> {
+  const paths: string[] = [];
+  for (const archivo of archivos) {
+    if (!(archivo instanceof File) || archivo.size === 0) continue;
+    const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("prendas")
+      .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
+    if (error) throw new Error(`No se pudo subir una foto: ${error.message}`);
+    paths.push(path);
+  }
+  return paths;
+}
+
+/** Lee la lista JSON de fotos existentes que se deben conservar. */
+function leerConservar(raw: FormDataEntryValue | null): string[] {
+  if (typeof raw !== "string" || !raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> {
   const parsed = leer(formData);
   if (!parsed.success) {
@@ -89,6 +119,8 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
     if (errCodigo) throw new Error(errCodigo.message);
 
     const imagen_path = await subirImagen(supabase, formData.get("imagen"));
+    const galeria = await subirGaleria(supabase, formData.getAll("imagenes"));
+    const extra = galeria.length ? { imagenes: galeria } : {};
 
     const { data: prenda, error } = await supabase
       .from("prendas")
@@ -107,6 +139,7 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
         stock_minimo: v.stock_minimo,
         destacado: v.destacado,
         imagen_path,
+        extra,
       })
       .select("id, nombre")
       .single();
@@ -151,11 +184,21 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
 
     const { data: actual } = await supabase
       .from("prendas")
-      .select("stock, nombre")
+      .select("stock, nombre, extra")
       .eq("id", id)
       .single();
 
     const imagen_path = await subirImagen(supabase, formData.get("imagen"));
+
+    // Galería: conservar las fotos elegidas + subir las nuevas, preservando
+    // el resto de `extra` (por ejemplo imagen_drive_id de la migración).
+    const extraActual = (actual?.extra ?? {}) as Record<string, unknown>;
+    const conservar = leerConservar(formData.get("imagenes_conservar"));
+    const nuevas = await subirGaleria(supabase, formData.getAll("imagenes"));
+    const imagenes = [...conservar, ...nuevas];
+    const extra: Record<string, unknown> = { ...extraActual };
+    if (imagenes.length) extra.imagenes = imagenes;
+    else delete extra.imagenes;
 
     const update: TablesUpdate<"prendas"> = {
       nombre: v.nombre,
@@ -170,6 +213,7 @@ export async function actualizarPrenda(id: string, formData: FormData): Promise<
       stock: v.stock,
       stock_minimo: v.stock_minimo,
       destacado: v.destacado,
+      extra: extra as TablesUpdate<"prendas">["extra"],
     };
     if (imagen_path) update.imagen_path = imagen_path;
 
