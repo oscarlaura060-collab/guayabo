@@ -10,13 +10,13 @@ export const EMOJI = {
   sol: cp(0x2600, 0xfe0f), // ☀️
   palmera: cp(0x1f334), // 🌴
   llave: cp(0x1f511), // 🔑
-  persona: cp(0x1f9d1), // 🧑
-  alerta: cp(0x1f6a8), // 🚨
-  camara: cp(0x1f4f8), // 📸
+  persona: cp(0x1f464), // 👤 (persona, compatible)
+  alerta: cp(0x26a0, 0xfe0f), // ⚠️
+  camara: cp(0x1f4f7), // 📷
   usuario: cp(0x1f464), // 👤
-  cedula: cp(0x1faaa), // 🪪
-  movil: cp(0x1f4f2), // 📲
-  correo: cp(0x1f4e7), // 📧
+  cedula: cp(0x1f194), // 🆔 (la de "cédula" 🪪 es muy nueva y sale como cuadro)
+  movil: cp(0x1f4f1), // 📱
+  correo: cp(0x2709, 0xfe0f), // ✉️
   pin: cp(0x1f4cd), // 📍
   bolsas: cp(0x1f6cd, 0xfe0f), // 🛍️
   chispas: cp(0x2728), // ✨
