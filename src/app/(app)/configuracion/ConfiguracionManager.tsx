@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
-import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada, subirImagenConfig, guardarConfigUpsert } from "./actions";
+import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada, subirImagenConfig } from "./actions";
 import { comprimirImagen } from "@/lib/imagen";
 
 export interface ConfigRow {
@@ -195,18 +195,6 @@ export function ConfiguracionManager({
     );
   }
 
-  // Enlaces sociales (se crean si no existen).
-  const [tiktok, setTiktok] = useState(valores.TIKTOK_URL ?? "");
-  const [playlist, setPlaylist] = useState(valores.PLAYLIST_URL ?? "");
-  const [guardandoEnlaces, setGuardandoEnlaces] = useState(false);
-  async function onGuardarEnlaces() {
-    setGuardandoEnlaces(true);
-    const res = await guardarConfigUpsert({ TIKTOK_URL: tiktok.trim(), PLAYLIST_URL: playlist.trim() });
-    setGuardandoEnlaces(false);
-    if (res.ok) { toast("Enlaces guardados", "exito"); router.refresh(); }
-    else toast(res.error ?? "Error", "error");
-  }
-
   async function onGuardar() {
     if (cambios.length === 0) {
       toast("No hay cambios por guardar", "info");
@@ -353,25 +341,6 @@ export function ConfiguracionManager({
               {ASSETS_VITRINA.map((a) => (
                 <SubirAsset key={a.clave} clave={a.clave} etiqueta={a.etiqueta} ancho={a.ancho} />
               ))}
-            </div>
-          </div>
-
-          {/* Enlaces del inicio (botones) */}
-          <div className="gy-card mb-4 p-4">
-            <div className="mb-1 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Enlaces del inicio</div>
-            <p className="mb-3 text-xs" style={{ color: "var(--tenue)" }}>Activan los botones de TikTok y de la playlist en la página de inicio. Pega el enlace completo (https://…).</p>
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1 text-sm font-medium">
-                TikTok
-                <input className={`${inputCls} w-full`} style={inputStyle} value={tiktok} onChange={(e) => setTiktok(e.target.value)} placeholder="https://www.tiktok.com/@guayabo" />
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium">
-                Playlist (Spotify, YouTube…)
-                <input className={`${inputCls} w-full`} style={inputStyle} value={playlist} onChange={(e) => setPlaylist(e.target.value)} placeholder="https://open.spotify.com/playlist/…" />
-              </label>
-              <div className="flex justify-end">
-                <Button onClick={onGuardarEnlaces} disabled={guardandoEnlaces}>{guardandoEnlaces ? "Guardando…" : "Guardar enlaces"}</Button>
-              </div>
             </div>
           </div>
 

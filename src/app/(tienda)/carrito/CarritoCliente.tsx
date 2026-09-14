@@ -10,6 +10,7 @@ import { EMOJI } from "@/lib/emoji";
 import { crearSolicitud } from "./actions";
 
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2.5 text-sm outline-none";
+const OTRA = "__OTRA__";
 
 export interface Envio {
   ciudad: string;
@@ -44,23 +45,26 @@ export function CarritoCliente({
   const [cedula, setCedula] = useState("");
   const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");
-  const [ciudad, setCiudad] = useState("");
+  const [seleccion, setSeleccion] = useState(""); // ciudad de la lista, "" o OTRA
+  const [ciudadOtra, setCiudadOtra] = useState("");
   const [direccion, setDireccion] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listo, setListo] = useState(false);
 
-  // Envío según la ciudad escrita: coincidencia exacta > por defecto.
-  const ciudadMatch = ciudad.trim() ? envios.find((e) => norm(e.ciudad) === norm(ciudad)) : undefined;
-  const envioConocido = ciudad.trim() !== "" && (ciudadMatch !== undefined || envioDefecto > 0);
-  const envio = ciudadMatch ? ciudadMatch.precio : ciudad.trim() ? envioDefecto : 0;
+  // Ciudad efectiva y tarifa. El precio definitivo lo recalcula el servidor;
+  // esto es solo la vista previa para el cliente.
+  const esOtra = seleccion === OTRA;
+  const ciudad = (esOtra ? ciudadOtra : seleccion).trim();
+  const ciudadMatch = !esOtra && seleccion ? envios.find((e) => norm(e.ciudad) === norm(seleccion)) : undefined;
+  const envio = ciudadMatch ? ciudadMatch.precio : ciudad ? envioDefecto : 0;
+  const envioConocido = envio > 0; // tarifa definida; 0 => por confirmar
   const totalConEnvio = total + envio;
 
   function textoEnvio() {
-    if (!ciudad.trim()) return "Escribe tu ciudad para calcular el envío";
-    if (!envioConocido) return "Envío por confirmar por WhatsApp";
-    if (envio === 0) return "Envío gratis";
-    return pesos(envio);
+    if (!ciudad) return "Selecciona tu ciudad para calcular el envío";
+    if (envio > 0) return pesos(envio);
+    return esOtra ? "Esta ciudad requiere confirmación de envío" : "Envío por confirmar por WhatsApp";
   }
 
   function construirMensaje() {
@@ -68,8 +72,8 @@ export function CarritoCliente({
       (it) =>
         `• ${it.nombre} — Talla ${it.talla ?? "-"}, Color ${it.color ?? "-"} x${it.cantidad} — ${pesos(it.precio * it.cantidad)}`,
     );
-    const lineaEnvio = envioConocido
-      ? `Envío (${ciudad}): ${envio === 0 ? "Gratis" : pesos(envio)}`
+    const lineaEnvio = envio > 0
+      ? `Envío (${ciudad}): ${pesos(envio)}`
       : `Envío (${ciudad || "-"}): por confirmar`;
     return (
       `Hola ${EMOJI.saludo}, quiero hacer un pedido en ${nombreMarca}:\n\n` +
@@ -187,7 +191,28 @@ export function CarritoCliente({
           <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Cédula" value={cedula} onChange={(e) => setCedula(e.target.value)} />
           <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Teléfono *" inputMode="tel" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
           <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Correo electrónico" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
+          {/* Ciudad de envío: selector con tarifa automática */}
+          <div className="relative">
+            <select
+              className={`${inputCls} w-full appearance-none pr-9`}
+              style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }}
+              value={seleccion}
+              onChange={(e) => setSeleccion(e.target.value)}
+              aria-label="Ciudad de envío"
+            >
+              <option value="">📍 Selecciona tu ciudad</option>
+              {envios.map((e) => (
+                <option key={e.ciudad} value={e.ciudad}>
+                  {e.ciudad}{e.precio > 0 ? ` — ${pesos(e.precio)}` : ""}
+                </option>
+              ))}
+              <option value={OTRA}>Otra ciudad</option>
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-50">▾</span>
+          </div>
+          {esOtra && (
+            <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Escribe tu ciudad" value={ciudadOtra} onChange={(e) => setCiudadOtra(e.target.value)} />
+          )}
           <input className={inputCls} style={{ borderColor: "var(--borde-suave, rgba(0,0,0,.16))" }} placeholder="Dirección" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
         </div>
 

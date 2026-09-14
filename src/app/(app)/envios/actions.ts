@@ -41,6 +41,16 @@ export async function actualizarCiudadEnvio(id: string, precio: number): Promise
   return { ok: true };
 }
 
+export async function activarCiudadEnvio(id: string, activo: boolean): Promise<Resultado> {
+  if (!(await esAdmin())) return { ok: false, error: "Solo un administrador." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("envios").update({ activo }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/envios");
+  revalidatePath("/carrito");
+  return { ok: true };
+}
+
 export async function eliminarCiudadEnvio(id: string): Promise<Resultado> {
   if (!(await esAdmin())) return { ok: false, error: "Solo un administrador." };
   const supabase = await createClient();
