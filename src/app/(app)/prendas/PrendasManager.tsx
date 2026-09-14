@@ -13,7 +13,7 @@ import { urlImagenPrenda, estadoStock } from "@/lib/prendas";
 import type { CatalogosPrenda } from "@/lib/listas";
 import type { Tables } from "@/types/database.types";
 import { PrendaForm } from "./PrendaForm";
-import { crearPrenda, actualizarPrenda, desactivarPrenda } from "./actions";
+import { crearPrendaMultitalla, actualizarPrenda, desactivarPrenda } from "./actions";
 
 type Prenda = Tables<"prendas">;
 
@@ -48,9 +48,9 @@ export function PrendasManager({
   async function onGuardar(fd: FormData) {
     const res = modal.esEdicion && modal.prenda
       ? await actualizarPrenda(modal.prenda.id, fd)
-      : await crearPrenda(fd);
+      : await crearPrendaMultitalla(fd);
     if (res.ok) {
-      toast(modal.esEdicion ? "Prenda actualizada" : "Prenda creada", "exito");
+      toast(modal.esEdicion ? "Prenda actualizada" : "Prenda(s) creada(s)", "exito");
       setModal({ abierto: false, prenda: null, esEdicion: false });
       router.refresh();
     } else {

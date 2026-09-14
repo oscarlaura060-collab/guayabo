@@ -94,7 +94,10 @@ async function subirImagen(
   return path;
 }
 
-/** Sube varias fotos adicionales al bucket `prendas` y devuelve sus paths. */
+/**
+ * Sube varias fotos adicionales al bucket `prendas`. Es resiliente: si una
+ * falla, salta esa y conserva las demás (no aborta el guardado completo).
+ */
 async function subirGaleria(
   supabase: Awaited<ReturnType<typeof createClient>>,
   archivos: FormDataEntryValue[],
@@ -107,8 +110,7 @@ async function subirGaleria(
     const { error } = await supabase.storage
       .from("prendas")
       .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
-    if (error) throw new Error(`No se pudo subir una foto: ${error.message}`);
-    paths.push(path);
+    if (!error) paths.push(path);
   }
   return paths;
 }
@@ -185,6 +187,101 @@ export async function crearPrenda(formData: FormData): Promise<ResultadoAccion> 
         referencia: "Registro inicial",
         usuario_email: user?.email ?? null,
       });
+    }
+
+    revalidatePath("/prendas");
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al crear la prenda" };
+  }
+}
+
+/**
+ * Crea una prenda con VARIAS tallas de una sola vez: una fila por talla (el
+ * modelo del proyecto), compartiendo nombre, precio, foto, costos y medidas,
+ * con la cantidad propia de cada talla. No cambia el esquema ni afecta datos.
+ */
+export async function crearPrendaMultitalla(formData: FormData): Promise<ResultadoAccion> {
+  const parsed = leer(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const v = parsed.data;
+
+  // Tallas seleccionadas con su cantidad. Sin duplicados, sin negativos.
+  let tallas: { talla: string; stock: number }[] = [];
+  try {
+    const arr = JSON.parse(String(formData.get("tallas") || "[]"));
+    if (Array.isArray(arr)) {
+      const vistas = new Set<string>();
+      for (const t of arr) {
+        const nombreTalla = String(t?.talla ?? "").trim();
+        const cant = Math.max(0, Math.floor(Number(t?.stock) || 0));
+        if (!nombreTalla || vistas.has(nombreTalla.toUpperCase())) continue;
+        vistas.add(nombreTalla.toUpperCase());
+        tallas.push({ talla: nombreTalla, stock: cant });
+      }
+    }
+  } catch {
+    tallas = [];
+  }
+  if (tallas.length === 0) return { ok: false, error: "Elige al menos una talla." };
+
+  const supabase = await createClient();
+  try {
+    const costosObj: Record<string, number> = {};
+    for (const c of v.costos) costosObj[c.nombre] = c.valor;
+    const costo = v.costos.reduce((s, c) => s + c.valor, 0);
+
+    // Una sola foto y galería, compartidas por todas las tallas.
+    const imagen_path = await subirImagen(supabase, formData.get("imagen"));
+    const galeria = await subirGaleria(supabase, formData.getAll("imagenes"));
+    const extra = galeria.length ? { imagenes: galeria } : {};
+    const medidas = parseMedidas(formData.get("medidas")) as Json;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    for (const t of tallas) {
+      const { data: codigo, error: errCodigo } = await supabase.rpc("siguiente_consecutivo", { p_entidad: "PRENDA" });
+      if (errCodigo) throw new Error(errCodigo.message);
+
+      const { data: prenda, error } = await supabase
+        .from("prendas")
+        .insert({
+          codigo,
+          nombre: v.nombre,
+          categoria: v.categoria || null,
+          talla: t.talla,
+          color: v.color || null,
+          descripcion: v.descripcion || null,
+          observaciones: v.observaciones || null,
+          composicion: v.composicion || null,
+          medidas,
+          precio: v.precio,
+          costo,
+          costos: costosObj,
+          stock: t.stock,
+          stock_minimo: v.stock_minimo,
+          destacado: v.destacado,
+          imagen_path,
+          extra,
+        })
+        .select("id, nombre")
+        .single();
+      if (error) throw new Error(error.message);
+
+      if (t.stock > 0) {
+        await supabase.from("movimientos_inventario").insert({
+          prenda_id: prenda.id,
+          prenda_nombre: prenda.nombre,
+          tipo: "ENTRADA",
+          cantidad: t.stock,
+          stock_anterior: 0,
+          stock_nuevo: t.stock,
+          referencia: "Registro inicial",
+          usuario_email: user?.email ?? null,
+        });
+      }
     }
 
     revalidatePath("/prendas");
