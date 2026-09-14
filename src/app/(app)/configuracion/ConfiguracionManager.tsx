@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { useToast } from "@/components/ui/Toast";
-import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo } from "./actions";
+import { guardarConfig, actualizarPerfil, crearUsuario, subirLogo, subirFotosPortada } from "./actions";
 
 export interface ConfigRow {
   clave: string;
@@ -79,6 +79,36 @@ export function ConfiguracionManager({
     const res = await subirLogo(new FormData(e.currentTarget));
     setSubiendoLogo(false);
     if (res.ok) { toast("Logo actualizado", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+
+  // Fotos de portada (inicio)
+  const portadaActual: string[] = (() => {
+    try {
+      const arr = JSON.parse(valores.HERO_IMAGENES ?? "[]");
+      return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  })();
+  const [subiendoPortada, setSubiendoPortada] = useState(false);
+  async function onPortada(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    fd.set("conservar", JSON.stringify(portadaActual));
+    setSubiendoPortada(true);
+    const res = await subirFotosPortada(fd);
+    setSubiendoPortada(false);
+    if (res.ok) { toast("Fotos de portada actualizadas", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+  async function quitarPortada(url: string) {
+    const fd = new FormData();
+    fd.set("conservar", JSON.stringify(portadaActual.filter((u) => u !== url)));
+    setSubiendoPortada(true);
+    const res = await subirFotosPortada(fd);
+    setSubiendoPortada(false);
+    if (res.ok) { toast("Foto quitada", "exito"); router.refresh(); }
     else toast(res.error ?? "Error", "error");
   }
 
@@ -194,6 +224,27 @@ export function ConfiguracionManager({
               </form>
             </div>
             <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Aparece en el menú y en la pantalla de entrada. Usa un PNG o JPG cuadrado.</p>
+          </div>
+
+          {/* Fotos de portada (inicio) */}
+          <div className="gy-card mb-4 p-4">
+            <div className="mb-3 text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--tenue)" }}>Fotos de portada (inicio)</div>
+            {portadaActual.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {portadaActual.map((url) => (
+                  <div key={url} className="relative h-24 w-20 overflow-hidden rounded-xl border" style={{ borderColor: "var(--borde-suave)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="Portada" className="h-full w-full object-cover" />
+                    <button type="button" onClick={() => quitarPortada(url)} disabled={subiendoPortada} className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full text-xs text-white" style={{ background: "#D33A2C" }} aria-label="Quitar">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <form onSubmit={onPortada} className="flex flex-wrap items-center gap-2">
+              <input className={inputCls} style={inputStyle} name="portada" type="file" accept="image/*" multiple required />
+              <Button type="submit" disabled={subiendoPortada}>{subiendoPortada ? "Subiendo…" : "Agregar fotos"}</Button>
+            </form>
+            <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Se muestran en el carrusel del inicio. Si no subes ninguna, se usan las fotos de tus productos.</p>
           </div>
 
           <div className="mb-3 flex items-center justify-end gap-3">
