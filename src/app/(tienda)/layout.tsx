@@ -21,7 +21,7 @@ export default async function TiendaLayout({
   return (
     <CarritoProvider>
     <div className="flex min-h-dvh flex-col" style={{ background: "var(--color-fondo)", color: "var(--color-texto)" }}>
-      <TiendaHeader nombre={nombre} logoUrl={logoUrl} waSaludo={waSaludo} />
+      <TiendaHeader nombre={nombre} logoUrl={logoUrl} />
 
       <main className="flex-1">{children}</main>
 
