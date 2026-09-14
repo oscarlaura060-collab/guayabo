@@ -53,6 +53,41 @@ export async function subirLogo(formData: FormData): Promise<Resultado> {
   return { ok: true };
 }
 
+/** Sube una o varias fotos de portada (inicio) y guarda sus URLs en config.HERO_IMAGENES. */
+export async function subirFotosPortada(formData: FormData): Promise<Resultado> {
+  if (!(await exigirAdmin())) return { ok: false, error: "Solo un administrador." };
+  const supabase = await createClient();
+  const archivos = formData.getAll("portada").filter((a): a is File => a instanceof File && a.size > 0);
+
+  // URLs existentes que se conservan (JSON) + las nuevas subidas.
+  const conservarRaw = formData.get("conservar");
+  let urls: string[] = [];
+  if (typeof conservarRaw === "string" && conservarRaw) {
+    try {
+      const arr = JSON.parse(conservarRaw);
+      if (Array.isArray(arr)) urls = arr.filter((x) => typeof x === "string");
+    } catch {}
+  }
+
+  for (const archivo of archivos) {
+    const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `marca/portada-${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("prendas")
+      .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
+    if (error) return { ok: false, error: error.message };
+    urls.push(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/prendas/${path}`);
+  }
+
+  const { error } = await supabase
+    .from("config")
+    .upsert({ clave: "HERO_IMAGENES", valor: JSON.stringify(urls), activo: true }, { onConflict: "clave" });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/", "layout");
+  revalidatePath("/configuracion");
+  return { ok: true };
+}
+
 // ---------------- Catálogos (listas) ----------------
 
 export async function crearLista(datos: {
