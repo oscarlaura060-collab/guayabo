@@ -733,6 +733,54 @@ export type Database = {
         }
         Relationships: []
       }
+      solicitudes_web: {
+        Row: {
+          cedula: string | null
+          ciudad: string | null
+          cliente_nombre: string | null
+          codigo: string | null
+          created_at: string
+          direccion: string | null
+          email: string | null
+          estado: string
+          id: string
+          items: Json
+          notas: string | null
+          telefono: string | null
+          total: number
+        }
+        Insert: {
+          cedula?: string | null
+          ciudad?: string | null
+          cliente_nombre?: string | null
+          codigo?: string | null
+          created_at?: string
+          direccion?: string | null
+          email?: string | null
+          estado?: string
+          id?: string
+          items?: Json
+          notas?: string | null
+          telefono?: string | null
+          total?: number
+        }
+        Update: {
+          cedula?: string | null
+          ciudad?: string | null
+          cliente_nombre?: string | null
+          codigo?: string | null
+          created_at?: string
+          direccion?: string | null
+          email?: string | null
+          estado?: string
+          id?: string
+          items?: Json
+          notas?: string | null
+          telefono?: string | null
+          total?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       apartados_activos_publico: {

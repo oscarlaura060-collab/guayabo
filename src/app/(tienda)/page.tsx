@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, MessageCircle } from "lucide-react";
 import { getConfig } from "@/lib/config";
 import { getProductos, WHATSAPP_DEFECTO, linkWhatsApp } from "@/lib/tienda";
+import { EMOJI } from "@/lib/emoji";
 import { ProductCard } from "@/components/tienda/ProductCard";
 
 export const metadata = { title: "Inicio" };
@@ -15,7 +16,7 @@ export default async function TiendaHome() {
   const lema = config.LEMA || "Moda colombiana, alegre y con actitud.";
   const bannerUrl = config.BANNER_URL || null;
   const whatsapp = (config.WHATSAPP || WHATSAPP_DEFECTO).replace(/\D/g, "");
-  const waSaludo = linkWhatsApp(whatsapp, `Hola 👋, quiero saber la disponibilidad de las prendas de ${nombre}.`);
+  const waSaludo = linkWhatsApp(whatsapp, `Hola ${EMOJI.saludo}, quiero saber la disponibilidad de las prendas de ${nombre}.`);
 
   const disponibles = productos.filter((p) => p.estado !== "AGOTADO");
   const destacados = disponibles.filter((p) => p.destacado).slice(0, 8);

@@ -1,19 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Shirt, Minus, Plus, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { Shirt, Minus, Plus, ShoppingCart, Check } from "lucide-react";
 import { pesos } from "@/lib/format";
-import { COLOR_ESTADO, linkWhatsApp, type Producto, type Variante } from "@/lib/tienda-tipos";
+import { COLOR_ESTADO, type Producto, type Variante } from "@/lib/tienda-tipos";
+import { useCarrito } from "@/lib/carrito";
 
-export function ProductoDetalle({
-  producto,
-  whatsapp,
-  nombreMarca,
-}: {
-  producto: Producto;
-  whatsapp: string;
-  nombreMarca: string;
-}) {
+export function ProductoDetalle({ producto }: { producto: Producto }) {
+  const { agregar } = useCarrito();
+  const [agregado, setAgregado] = useState(false);
   const [talla, setTalla] = useState<string | null>(producto.tallas[0] ?? null);
   const [color, setColor] = useState<string | null>(producto.colores[0] ?? null);
   const [cantidad, setCantidad] = useState(1);
@@ -38,15 +34,22 @@ export function ProductoDetalle({
 
   const imagenes = producto.imagenes.length ? producto.imagenes : [];
 
-  const mensaje =
-    `Hola 👋, quiero comprar/apartar una prenda de ${nombreMarca}.\n` +
-    `Prenda: ${producto.nombre}\n` +
-    `Talla: ${talla ?? "—"}\n` +
-    `Color: ${color ?? "—"}\n` +
-    `Cantidad: ${cantidad}\n` +
-    `Precio: ${pesos(precio)}\n` +
-    `Quedo atento/a para confirmar disponibilidad 😊`;
-  const waLink = linkWhatsApp(whatsapp, mensaje);
+  // Faltan datos por elegir si el producto ofrece tallas/colores y no se han seleccionado.
+  const faltaElegir = (producto.tallas.length > 0 && !talla) || (producto.colores.length > 0 && !color);
+
+  function onAgregar() {
+    if (agotado || faltaElegir) return;
+    agregar({
+      prendaId: variante?.id ?? producto.id,
+      nombre: producto.nombre,
+      talla,
+      color,
+      precio,
+      cantidad,
+      imagen: imagenes[0] ?? null,
+    });
+    setAgregado(true);
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
@@ -134,20 +137,27 @@ export function ProductoDetalle({
           </div>
         </div>
 
-        {/* WhatsApp */}
-        <a
-          href={agotado ? undefined : waLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-disabled={agotado}
-          onClick={(e) => { if (agotado) e.preventDefault(); }}
-          className="mt-2 inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold text-white transition hover:opacity-90"
-          style={{ background: agotado ? "#9aa0a6" : "var(--color-secundario)", pointerEvents: agotado ? "none" : undefined }}
+        {/* Agregar al carrito */}
+        <button
+          type="button"
+          onClick={onAgregar}
+          disabled={agotado || faltaElegir}
+          className="mt-2 inline-flex items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+          style={{ background: agotado ? "#9aa0a6" : "var(--color-secundario)" }}
         >
-          <MessageCircle size={19} /> {producto.estado === "APARTADO" ? "Reservado (apartado)" : agotado ? "Agotado por ahora" : "Comprar / Apartar por WhatsApp"}
-        </a>
+          <ShoppingCart size={19} /> {agotado ? "Agotado por ahora" : faltaElegir ? "Elige talla y color" : "Agregar al carrito"}
+        </button>
+
+        {agregado && !agotado && (
+          <div className="flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-sm" style={{ background: "color-mix(in srgb, #3AA76D 12%, transparent)" }}>
+            <span className="inline-flex items-center gap-1.5" style={{ color: "#2e8b57" }}>
+              <Check size={16} /> Agregado al carrito
+            </span>
+            <Link href="/carrito" className="font-semibold" style={{ color: "var(--color-secundario)" }}>Ver carrito →</Link>
+          </div>
+        )}
         <p className="text-xs opacity-60">
-          Al enviar el mensaje, confirmamos la disponibilidad real antes de apartar o vender. El inventario solo cambia cuando nosotros lo confirmamos.
+          Confirmamos la disponibilidad real antes de preparar tu pedido. El inventario solo cambia cuando nosotros lo confirmamos.
         </p>
       </div>
     </div>
