@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Globe, Trash2, Phone, User, MapPin, Mail, CreditCard, CheckCircle2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
@@ -48,25 +49,38 @@ const COLOR_ESTADO: Record<string, string> = {
 
 export function PedidosWebManager({
   solicitudes,
+  metodos,
   esAdmin,
   puedeEscribir,
 }: {
   solicitudes: SolicitudRow[];
+  metodos: string[];
   esAdmin: boolean;
   puedeEscribir: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [filtro, setFiltro] = useState<string>("");
-  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
+  // Pedido en proceso de confirmación + opciones de pago elegidas.
+  const [aConfirmar, setAConfirmar] = useState<SolicitudRow | null>(null);
+  const [metodo, setMetodo] = useState(metodos[0] ?? "Nequi");
+  const [pagado, setPagado] = useState(true);
 
-  async function confirmar(s: SolicitudRow) {
-    if (!confirm(`¿Confirmar el pedido de ${s.cliente_nombre ?? "—"} y crear la venta? Se descontará el inventario.`)) return;
-    setConfirmando(s.id);
-    const res = await confirmarSolicitud(s.id);
-    setConfirmando(null);
+  function abrirConfirmar(s: SolicitudRow) {
+    setAConfirmar(s);
+    setMetodo(metodos[0] ?? "Nequi");
+    setPagado(s.estado === "Pagada" || s.estado === "Nueva");
+  }
+
+  async function confirmar() {
+    if (!aConfirmar) return;
+    setConfirmando(true);
+    const res = await confirmarSolicitud(aConfirmar.id, { metodo, pagado });
+    setConfirmando(false);
     if (res.ok) {
       toast("Pedido confirmado como venta", "exito");
+      setAConfirmar(null);
       if (res.ventaId) router.push(`/ventas/${res.ventaId}`);
       else router.refresh();
     } else toast(res.error ?? "Error", "error");
@@ -171,14 +185,52 @@ export function PedidosWebManager({
                   <CheckCircle2 size={16} /> Ver venta
                 </Link>
               ) : puedeEscribir && s.estado !== "Cancelada" ? (
-                <Button onClick={() => confirmar(s)} disabled={confirmando === s.id} className="w-full justify-center">
-                  <ShoppingBag size={16} /> {confirmando === s.id ? "Creando venta…" : "Confirmar como venta"}
+                <Button onClick={() => abrirConfirmar(s)} className="w-full justify-center">
+                  <ShoppingBag size={16} /> Confirmar como venta
                 </Button>
               ) : null}
             </div>
           ))}
         </div>
       )}
+
+      {/* Confirmar como venta: método de pago y si está pagado */}
+      <Modal abierto={!!aConfirmar} onClose={() => setAConfirmar(null)} titulo="Confirmar como venta">
+        {aConfirmar && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm" style={{ color: "var(--tenue)" }}>
+              Se creará la venta de <b style={{ color: "var(--color-texto)" }}>{aConfirmar.cliente_nombre ?? "—"}</b> por <b style={{ color: "var(--color-texto)" }}>{pesos(aConfirmar.total)}</b> y se descontará el inventario.
+            </p>
+
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
+              El pedido ya está pagado (registrar el pago del total)
+            </label>
+
+            {pagado && (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Método de pago
+                <select
+                  className="rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none"
+                  style={{ borderColor: "var(--borde-suave)" }}
+                  value={metodo}
+                  onChange={(e) => setMetodo(e.target.value)}
+                >
+                  {metodos.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+            )}
+            {!pagado && (
+              <p className="text-xs" style={{ color: "#9a6f0a" }}>La venta quedará con saldo pendiente; el pago lo registras luego en Pagos.</p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variante="plano" onClick={() => setAConfirmar(null)}>Cancelar</Button>
+              <Button onClick={confirmar} disabled={confirmando}>{confirmando ? "Creando venta…" : "Crear venta"}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

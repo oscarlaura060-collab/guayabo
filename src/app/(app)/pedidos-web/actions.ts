@@ -27,7 +27,10 @@ interface ItemGuardado {
  * si el pedido está marcado "Pagada", registra el pago). Estilo OlaClick:
  * el pedido entra por la web y aquí se confirma para volverse venta real.
  */
-export async function confirmarSolicitud(id: string): Promise<Resultado> {
+export async function confirmarSolicitud(
+  id: string,
+  opts?: { metodo?: string; pagado?: boolean },
+): Promise<Resultado> {
   if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
   const supabase = await createClient();
 
@@ -50,8 +53,8 @@ export async function confirmarSolicitud(id: string): Promise<Resultado> {
   const costoDe = new Map((prendas ?? []).map((p) => [p.id, Number(p.costo)]));
 
   const config = await getConfig().catch(() => ({}) as Record<string, string>);
-  const metodo = config.PAGO_METODO_VENTA || "Nequi";
-  const pagado = sol.estado === "Pagada";
+  const metodo = opts?.metodo || config.PAGO_METODO_VENTA || "Nequi";
+  const pagado = opts?.pagado ?? sol.estado === "Pagada";
 
   const res = await crearVenta({
     cliente_nombre: sol.cliente_nombre,
