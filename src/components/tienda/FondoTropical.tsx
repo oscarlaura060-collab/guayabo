@@ -46,6 +46,62 @@ const PALMERA_FRONDS = [
   "M58,60 C46,36 40,48 34,60", "M58,60 C70,36 82,48 92,62",
 ];
 
+// ---- Palmera grande tipo boceto (tronco largo + frondas plumosas) ----
+function frondAt(cx: number, cy: number, ang: number, len: number, curl: number): string[] {
+  const rad = (ang * Math.PI) / 180;
+  const tx = cx + Math.cos(rad) * len;
+  const ty = cy + Math.sin(rad) * len;
+  const mx = cx + Math.cos(rad) * len * 0.5 - Math.sin(rad) * curl;
+  const my = cy + Math.sin(rad) * len * 0.5 + Math.cos(rad) * curl;
+  const d: string[] = [`M${cx},${cy} Q${mx.toFixed(1)},${my.toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)}`];
+  const N = 9;
+  for (let i = 1; i <= N; i++) {
+    const t = i / (N + 1);
+    const x = (1 - t) * (1 - t) * cx + 2 * (1 - t) * t * mx + t * t * tx;
+    const y = (1 - t) * (1 - t) * cy + 2 * (1 - t) * t * my + t * t * ty;
+    let dx = 2 * ((1 - t) * (mx - cx) + t * (tx - mx));
+    let dy = 2 * ((1 - t) * (my - cy) + t * (ty - my));
+    const L = Math.hypot(dx, dy) || 1; dx /= L; dy /= L;
+    const ll = 17 * (1 - 0.5 * t);
+    d.push(`M${x.toFixed(1)},${y.toFixed(1)} L${(x - dy * ll + dx * ll * 0.45).toFixed(1)},${(y + dx * ll + dy * ll * 0.45).toFixed(1)}`);
+    d.push(`M${x.toFixed(1)},${y.toFixed(1)} L${(x + dy * ll + dx * ll * 0.45).toFixed(1)},${(y - dx * ll + dy * ll * 0.45).toFixed(1)}`);
+  }
+  return d;
+}
+
+const PALMERA_CX = 100, PALMERA_CY = 92;
+const PALMERA_PATHS = [
+  ...frondAt(PALMERA_CX, PALMERA_CY, -90, 74, 0),
+  ...frondAt(PALMERA_CX, PALMERA_CY, -50, 92, 34),
+  ...frondAt(PALMERA_CX, PALMERA_CY, -18, 96, 30),
+  ...frondAt(PALMERA_CX, PALMERA_CY, 8, 90, 26),
+  ...frondAt(PALMERA_CX, PALMERA_CY, -130, 92, -34),
+  ...frondAt(PALMERA_CX, PALMERA_CY, -162, 96, -30),
+  ...frondAt(PALMERA_CX, PALMERA_CY, 188, 90, -26),
+];
+
+/** Palmera grande de líneas, para marcas de agua decorativas. */
+export function PalmeraGrande({ className = "", color, opacity }: { className?: string; color: string; opacity: number }) {
+  return (
+    <div aria-hidden className={`pointer-events-none absolute ${className}`} style={{ color, opacity }}>
+      <svg viewBox="0 0 200 360" width="100%" height="100%" role="presentation" preserveAspectRatio="xMidYMin meet">
+        <g fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+          {/* tronco */}
+          <path d="M95,96 C90,180 99,268 84,352" />
+          <path d="M105,96 C106,180 115,268 106,352" />
+          <path d="M92,150 q8,4 16,0 M95,205 q7,4 15,0 M99,258 q6,3 13,0 M101,308 q6,3 12,0" strokeWidth={1.4} />
+          {/* frondas */}
+          {PALMERA_PATHS.map((d, i) => <path key={i} d={d} />)}
+          {/* cocos */}
+          <circle cx="93" cy="98" r="4" fill="currentColor" stroke="none" />
+          <circle cx="106" cy="98" r="4" fill="currentColor" stroke="none" />
+          <circle cx="100" cy="106" r="4" fill="currentColor" stroke="none" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 function Motivos({ id }: { id: string }) {
   const w = 1.9;
   return (
