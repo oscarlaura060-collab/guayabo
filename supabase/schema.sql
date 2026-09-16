@@ -715,3 +715,8 @@ begin
     execute format('revoke execute on function %s from anon, authenticated, public', r.sig);
   end loop;
 end $$;
+
+-- IMPORTANTE: recalcular_pago_pedido la invoca el trigger tg_pagos_recalcula con
+-- el rol del usuario (no es SECURITY DEFINER), así que 'authenticated' SÍ necesita
+-- EXECUTE. Se lo devolvemos (anon sigue sin poder). Ver migración 0003.
+grant execute on function public.recalcular_pago_pedido(uuid) to authenticated;
