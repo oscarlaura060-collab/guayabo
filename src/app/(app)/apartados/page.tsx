@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getSesion, rolDe } from "@/lib/auth";
 import { getListas, getColoresEstado } from "@/lib/listas";
@@ -32,10 +31,6 @@ export default async function ApartadosPage() {
 
   return (
     <>
-      <PageHeader
-        titulo="Apartados"
-        descripcion="Reservas de prendas (por ejemplo sin stock). Cuando reingresa el stock, se marcan disponibles para entregar."
-      />
       <ApartadosManager
         apartados={apartados ?? []}
         clientes={clientes ?? []}

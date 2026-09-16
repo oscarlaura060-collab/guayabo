@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, BookmarkCheck, PackageCheck, Ban, Sparkles, Eye, FileText } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -115,6 +116,16 @@ export function ApartadosManager({
 
   return (
     <>
+      <PageHeader
+        titulo="Apartados"
+        descripcion="Reservas de prendas (por ejemplo sin stock). Cuando reingresa el stock, se marcan disponibles para entregar."
+        accion={
+          puedeEscribir ? (
+            <Button onClick={() => setModal(true)}><Plus size={17} /> Nuevo apartado</Button>
+          ) : undefined
+        }
+      />
+
       {disponibles.length > 0 && (
         <div className="mb-4 flex items-center gap-2 rounded-2xl border p-3 text-sm"
           style={{ borderColor: "color-mix(in srgb, #3AA76D 45%, transparent)", background: "color-mix(in srgb, #3AA76D 12%, transparent)" }}>
@@ -129,7 +140,6 @@ export function ApartadosManager({
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar apartado…"
             className="w-full rounded-full border bg-[var(--color-tarjeta)] py-2 pl-9 pr-3 text-sm outline-none" style={{ borderColor: "var(--borde-suave)" }} />
         </label>
-        {puedeEscribir && <Button onClick={() => setModal(true)}><Plus size={17} /> Nuevo apartado</Button>}
       </div>
 
       {lista.length === 0 ? (
