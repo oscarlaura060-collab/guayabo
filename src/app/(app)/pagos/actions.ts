@@ -164,6 +164,60 @@ export async function eliminarComprobante(pagoId: string, path: string): Promise
   return { ok: true };
 }
 
+const pagoEditSchema = z.object({
+  valor: z.coerce.number().positive("El valor debe ser mayor a cero"),
+  metodo: z.string().min(1, "Elige un método de pago"),
+  fecha: z.string().optional().nullable(),
+  observaciones: z.string().trim().optional().nullable(),
+});
+
+/**
+ * Edita un pago (valor, método, fecha, observaciones). Para pedidos el trigger
+ * recalcula pagado/saldo al actualizar; para apartados se recalcula aquí.
+ * No cambia a qué compra pertenece el pago.
+ */
+export async function editarPago(
+  pagoId: string,
+  datos: { valor: number; metodo: string; fecha?: string | null; observaciones?: string | null },
+): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+  const parsed = pagoEditSchema.safeParse(datos);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { data: pago } = await supabase.from("pagos").select("apartado_id, pedido_id").eq("id", pagoId).single();
+
+  const patch: { valor: number; metodo: string; observaciones: string | null; fecha?: string } = {
+    valor: v.valor,
+    metodo: v.metodo,
+    observaciones: v.observaciones || null,
+  };
+  if (v.fecha) patch.fecha = v.fecha;
+
+  const { error } = await supabase.from("pagos").update(patch).eq("id", pagoId);
+  if (error) return { ok: false, error: error.message };
+
+  // Los apartados no tienen trigger: recalculamos abonado/saldo con los pagos activos.
+  if (pago?.apartado_id) {
+    const { data: pagosAp } = await supabase
+      .from("pagos")
+      .select("valor")
+      .eq("apartado_id", pago.apartado_id)
+      .eq("activo", true);
+    const abonado = (pagosAp ?? []).reduce((s, r) => s + Number(r.valor), 0);
+    const { data: ap } = await supabase.from("apartados").select("total").eq("id", pago.apartado_id).single();
+    const saldo = Math.max(Number(ap?.total ?? 0) - abonado, 0);
+    await supabase.from("apartados").update({ abonado, saldo }).eq("id", pago.apartado_id);
+    revalidatePath("/apartados");
+  }
+
+  revalidatePath("/pagos");
+  revalidatePath("/ventas");
+  revalidatePath("/pedidos");
+  return { ok: true };
+}
+
 /** Anula un pago (activo = false). El trigger recalcula el pedido. */
 export async function anularPago(pagoId: string): Promise<Resultado> {
   if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };

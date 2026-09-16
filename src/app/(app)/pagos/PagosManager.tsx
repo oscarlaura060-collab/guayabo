@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, FileText, Ban, CreditCard, Trash2 } from "lucide-react";
+import { Plus, Search, FileText, Ban, CreditCard, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Vacio } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { pesos, fecha as fmtFecha, hoyBogota } from "@/lib/format";
-import { registrarPago, subirComprobante, eliminarComprobante, anularPago } from "./actions";
+import { registrarPago, editarPago, subirComprobante, eliminarComprobante, anularPago } from "./actions";
 import { firmarComprobante } from "../comprobante-actions";
 
 export interface PagoRow {
@@ -55,6 +55,7 @@ export function PagosManager({
   const [filtroMetodo, setFiltroMetodo] = useState("");
   const [modalPago, setModalPago] = useState(false);
   const [comp, setComp] = useState<PagoRow | null>(null);
+  const [editar, setEditar] = useState<PagoRow | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const lista = useMemo(() => {
@@ -122,6 +123,22 @@ export function PagosManager({
     else toast(res.error ?? "Error", "error");
   }
 
+  async function onEditar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editar) return;
+    const fd = new FormData(e.currentTarget);
+    setOcupado(true);
+    const res = await editarPago(editar.id, {
+      valor: Number(fd.get("valor")),
+      metodo: String(fd.get("metodo")),
+      fecha: String(fd.get("fecha") || ""),
+      observaciones: String(fd.get("observaciones") || ""),
+    });
+    setOcupado(false);
+    if (res.ok) { toast("Pago actualizado", "exito"); setEditar(null); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -177,7 +194,10 @@ export function PagosManager({
                   </td>
                   {puedeEscribir && (
                     <td>
-                      <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => onAnular(p)} aria-label="Anular" title="Anular pago"><Ban size={15} /></button>
+                      <div className="flex items-center gap-1">
+                        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => setEditar(p)} aria-label="Editar" title="Editar pago"><Pencil size={15} /></button>
+                        <button className="gy-btn gy-btn-plano !p-1.5" onClick={() => onAnular(p)} aria-label="Anular" title="Anular pago"><Ban size={15} /></button>
+                      </div>
                     </td>
                   )}
                 </tr>
@@ -230,6 +250,38 @@ export function PagosManager({
             <Button type="submit" disabled={ocupado || pendientes.length === 0}>{ocupado ? "Guardando…" : "Registrar pago"}</Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Editar pago */}
+      <Modal abierto={!!editar} onClose={() => setEditar(null)} titulo="Editar pago">
+        {editar && (
+          <form onSubmit={onEditar} className="flex flex-col gap-3">
+            <p className="text-sm" style={{ color: "var(--tenue)" }}>
+              {editar.pedido_numero ?? "—"} · {editar.cliente_nombre ?? "Sin cliente"}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1 text-sm font-medium">Valor
+                <input className={inputCls} style={inputStyle} name="valor" type="number" min="1" defaultValue={editar.valor} required />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-medium">Método
+                <select className={inputCls} style={inputStyle} name="metodo" defaultValue={editar.metodo ?? metodos[0] ?? ""} required>
+                  {metodos.map((m) => <option key={m} value={m}>{m}</option>)}
+                  {editar.metodo && !metodos.includes(editar.metodo) && <option value={editar.metodo}>{editar.metodo}</option>}
+                </select>
+              </label>
+            </div>
+            <label className="flex flex-col gap-1 text-sm font-medium">Fecha
+              <input className={inputCls} style={inputStyle} name="fecha" type="date" defaultValue={editar.fecha?.slice(0, 10) || hoyBogota()} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">Observaciones
+              <input className={inputCls} style={inputStyle} name="observaciones" defaultValue={editar.observaciones ?? ""} />
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variante="plano" onClick={() => setEditar(null)}>Cancelar</Button>
+              <Button type="submit" disabled={ocupado}>{ocupado ? "Guardando…" : "Guardar cambios"}</Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* Comprobantes del pago */}
