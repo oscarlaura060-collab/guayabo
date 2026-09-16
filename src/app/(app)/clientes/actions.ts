@@ -50,6 +50,35 @@ function valores(v: z.infer<typeof clienteSchema>) {
   };
 }
 
+/** Crea un cliente desde otro flujo (ej. la venta) y devuelve su id y nombre. */
+export async function crearClienteRapido(datos: {
+  nombre: string;
+  documento?: string;
+  telefono?: string;
+  whatsapp?: string;
+  email?: string;
+  ciudad?: string;
+}): Promise<{ ok: boolean; error?: string; id?: string; nombre?: string }> {
+  if (!(await puedeEscribirServer())) return { ok: false, error: "No autorizado." };
+  const parsed = clienteSchema.safeParse(datos);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const supabase = await createClient();
+  try {
+    const { data: codigo, error: e1 } = await supabase.rpc("siguiente_consecutivo", { p_entidad: "CLIENTE" });
+    if (e1) throw new Error(e1.message);
+    const { data, error } = await supabase
+      .from("clientes")
+      .insert({ codigo, ...valores(parsed.data) })
+      .select("id, nombre")
+      .single();
+    if (error) throw new Error(error.message);
+    revalidatePath("/clientes");
+    return { ok: true, id: data.id, nombre: data.nombre };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al crear el cliente" };
+  }
+}
+
 export async function crearCliente(formData: FormData): Promise<ResultadoAccion> {
   if (!(await puedeEscribirServer())) return NO_AUTORIZADO;
   const parsed = leer(formData);

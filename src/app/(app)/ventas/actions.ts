@@ -294,15 +294,37 @@ export async function eliminarVenta(ventaId: string): Promise<Resultado> {
   return { ok: true };
 }
 
-/** Registra un pago contra la venta. El trigger recalcula pagado/saldo. */
-export async function registrarPago(
-  ventaId: string,
-  datos: { valor: number; metodo: string; observaciones?: string },
-): Promise<Resultado> {
+/** Sube los comprobantes (transferencias) al bucket privado y devuelve sus paths. */
+async function subirComprobantesVenta(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  archivos: FormDataEntryValue[],
+): Promise<string[]> {
+  const paths: string[] = [];
+  for (const archivo of archivos) {
+    if (!(archivo instanceof File) || archivo.size === 0) continue;
+    const ext = (archivo.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `pagos/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .upload(path, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
+    if (error) throw new Error(`No se pudo subir el comprobante: ${error.message}`);
+    paths.push(path);
+  }
+  return paths;
+}
+
+/**
+ * Registra un pago contra la venta, con comprobantes de transferencia opcionales.
+ * El trigger recalcula pagado/saldo. Recibe FormData (valor, metodo, observaciones,
+ * y archivos en "comprobante").
+ */
+export async function registrarPago(ventaId: string, formData: FormData): Promise<Resultado> {
   if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
-  const valor = Number(datos.valor);
+  const valor = Number(formData.get("valor"));
+  const metodo = String(formData.get("metodo") || "");
+  const observaciones = String(formData.get("observaciones") || "");
   if (!(valor > 0)) return { ok: false, error: "El valor debe ser mayor a cero." };
-  if (!datos.metodo) return { ok: false, error: "Elige un método de pago." };
+  if (!metodo) return { ok: false, error: "Elige un método de pago." };
 
   const supabase = await createClient();
   const { data: venta } = await supabase
@@ -314,6 +336,13 @@ export async function registrarPago(
   const { data: codigo, error: errCodigo } = await supabase.rpc("siguiente_consecutivo", { p_entidad: "PAGO" });
   if (errCodigo) return { ok: false, error: errCodigo.message };
 
+  let comprobantes: string[] = [];
+  try {
+    comprobantes = await subirComprobantesVenta(supabase, formData.getAll("comprobante"));
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo subir el comprobante" };
+  }
+
   const { error } = await supabase.from("pagos").insert({
     codigo,
     pedido_id: ventaId,
@@ -321,9 +350,10 @@ export async function registrarPago(
     cliente_nombre: venta?.cliente_nombre ?? null,
     fecha: new Date().toISOString().slice(0, 10),
     valor,
-    metodo: datos.metodo,
+    metodo,
     tipo_pago: venta && valor >= Number(venta.saldo) ? "PAGO TOTAL" : "ABONO",
-    observaciones: datos.observaciones || null,
+    comprobantes,
+    observaciones: observaciones || null,
   });
   if (error) return { ok: false, error: error.message };
 

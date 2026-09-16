@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound, Shirt } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound, Shirt, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { pesos } from "@/lib/format";
 import { urlImagenPrenda } from "@/lib/prendas";
 import type { Json } from "@/types/database.types";
 import { crearVenta } from "../actions";
+import { crearClienteRapido } from "../../clientes/actions";
 
 export interface ClienteOpt {
   id: string;
@@ -58,9 +60,41 @@ export function NuevaVentaFlujo({
   const router = useRouter();
   const { toast } = useToast();
 
+  const [clientesLista, setClientesLista] = useState<ClienteOpt[]>(clientes);
   const [clienteId, setClienteId] = useState<string | null>(null);
   const [clienteQuery, setClienteQuery] = useState("");
   const [mostrarClientes, setMostrarClientes] = useState(false);
+
+  // Registro rápido de cliente desde la venta.
+  const [modalCliente, setModalCliente] = useState(false);
+  const [creandoCliente, setCreandoCliente] = useState(false);
+  async function onCrearCliente(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const nombre = String(fd.get("nombre") || "").trim();
+    if (!nombre) { toast("Escribe el nombre del cliente", "error"); return; }
+    setCreandoCliente(true);
+    const res = await crearClienteRapido({
+      nombre,
+      documento: String(fd.get("documento") || ""),
+      telefono: String(fd.get("telefono") || ""),
+      whatsapp: String(fd.get("whatsapp") || ""),
+      email: String(fd.get("email") || ""),
+      ciudad: String(fd.get("ciudad") || ""),
+    });
+    setCreandoCliente(false);
+    if (res.ok && res.id) {
+      const nuevo: ClienteOpt = { id: res.id, nombre: res.nombre ?? nombre, codigo: null };
+      setClientesLista((cs) => [nuevo, ...cs]);
+      setClienteId(nuevo.id);
+      setClienteQuery(nuevo.nombre);
+      setMostrarClientes(false);
+      setModalCliente(false);
+      toast("Cliente registrado", "exito");
+    } else {
+      toast(res.error ?? "No se pudo registrar el cliente", "error");
+    }
+  }
 
   const [prendaQuery, setPrendaQuery] = useState("");
   const [catFiltro, setCatFiltro] = useState<string | null>(null);
@@ -75,11 +109,11 @@ export function NuevaVentaFlujo({
 
   const clientesFiltrados = useMemo(() => {
     const t = clienteQuery.trim().toLowerCase();
-    if (!t) return clientes.slice(0, 8);
-    return clientes
+    if (!t) return clientesLista.slice(0, 8);
+    return clientesLista
       .filter((c) => [c.nombre, c.codigo].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)))
       .slice(0, 8);
-  }, [clientes, clienteQuery]);
+  }, [clientesLista, clienteQuery]);
 
   const categorias = useMemo(() => {
     const set = new Set<string>();
@@ -163,8 +197,13 @@ export function NuevaVentaFlujo({
       <div className="flex flex-col gap-4">
         {/* Cliente */}
         <div className="gy-card p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-            <UserRound size={16} style={{ color: "var(--color-secundario)" }} /> Cliente
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <UserRound size={16} style={{ color: "var(--color-secundario)" }} /> Cliente
+            </div>
+            <button type="button" className="gy-btn gy-btn-plano !px-2 !py-1 text-sm" onClick={() => setModalCliente(true)}>
+              <UserPlus size={15} /> Nuevo cliente
+            </button>
           </div>
           <div className="relative">
             <label className="relative flex items-center">
@@ -353,6 +392,42 @@ export function NuevaVentaFlujo({
           </div>
         </div>
       </div>
+
+      {/* Modal: registrar cliente sin salir de la venta */}
+      <Modal abierto={modalCliente} onClose={() => setModalCliente(false)} titulo="Nuevo cliente">
+        <form onSubmit={onCrearCliente} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Nombre *
+            <input className={inputCls} style={inputStyle} name="nombre" required autoFocus />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Teléfono
+              <input className={inputCls} style={inputStyle} name="telefono" inputMode="tel" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              WhatsApp
+              <input className={inputCls} style={inputStyle} name="whatsapp" inputMode="tel" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Cédula
+              <input className={inputCls} style={inputStyle} name="documento" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Ciudad
+              <input className={inputCls} style={inputStyle} name="ciudad" />
+            </label>
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Correo
+            <input className={inputCls} style={inputStyle} name="email" type="email" inputMode="email" />
+          </label>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variante="plano" onClick={() => setModalCliente(false)}>Cancelar</Button>
+            <Button type="submit" disabled={creandoCliente}>{creandoCliente ? "Guardando…" : "Registrar y usar"}</Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

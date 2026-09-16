@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock, Trash2 } from "lucide-react";
+import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock, Trash2, Paperclip, Eye } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -19,6 +19,8 @@ import {
   actualizarEntrega,
   eliminarVenta,
 } from "../actions";
+import { subirComprobante, eliminarComprobante } from "../../pagos/actions";
+import { firmarComprobante } from "../../comprobante-actions";
 
 type Venta = Tables<"pedidos">;
 type Item = Tables<"pedido_items">;
@@ -120,13 +122,33 @@ export function VentaDetalle({
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     setOcupado(true);
-    const res = await registrarPago(venta.id, {
-      valor: Number(fd.get("valor")),
-      metodo: String(fd.get("metodo")),
-      observaciones: String(fd.get("observaciones") || ""),
-    });
+    const res = await registrarPago(venta.id, fd);
     setOcupado(false);
     if (res.ok) { setModalPago(false); toast("Pago registrado", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+
+  async function verComprobante(path: string) {
+    const { url } = await firmarComprobante(path);
+    if (url) window.open(url, "_blank", "noopener,noreferrer");
+    else toast("No se pudo abrir el comprobante", "error");
+  }
+  async function agregarComprobante(pagoId: string, files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const fd = new FormData();
+    for (const f of Array.from(files)) fd.append("comprobante", f);
+    setOcupado(true);
+    const res = await subirComprobante(pagoId, fd);
+    setOcupado(false);
+    if (res.ok) { toast("Comprobante agregado", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+  async function quitarComprobante(pagoId: string, path: string) {
+    if (!confirm("¿Quitar este comprobante?")) return;
+    setOcupado(true);
+    const res = await eliminarComprobante(pagoId, path);
+    setOcupado(false);
+    if (res.ok) { toast("Comprobante quitado", "exito"); router.refresh(); }
     else toast(res.error ?? "Error", "error");
   }
 
@@ -278,12 +300,35 @@ export function VentaDetalle({
             <p className="text-sm" style={{ color: "var(--tenue)" }}>Sin pagos registrados.</p>
           ) : (
             <div className="flex flex-col gap-2 text-sm">
-              {pagos.map((p) => (
-                <div key={p.id} className="flex justify-between">
-                  <span style={{ color: "var(--tenue)" }}>{fmtFecha(p.fecha)} · {p.metodo}</span>
-                  <span className="tabular-nums font-medium">{pesos(p.valor)}</span>
-                </div>
-              ))}
+              {pagos.map((p) => {
+                const comps = p.comprobantes ?? [];
+                return (
+                  <div key={p.id} className="flex flex-col gap-1 border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: "var(--borde-suave)" }}>
+                    <div className="flex justify-between">
+                      <span style={{ color: "var(--tenue)" }}>{fmtFecha(p.fecha)} · {p.metodo}</span>
+                      <span className="tabular-nums font-medium">{pesos(p.valor)}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {comps.map((path, i) => (
+                        <span key={path} className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs" style={{ borderColor: "var(--borde-suave)" }}>
+                          <button type="button" className="inline-flex items-center gap-1" onClick={() => verComprobante(path)} style={{ color: "var(--color-secundario)" }}>
+                            <Eye size={13} /> Comprobante {i + 1}
+                          </button>
+                          {puedeEscribir && (
+                            <button type="button" onClick={() => quitarComprobante(p.id, path)} aria-label="Quitar comprobante" style={{ color: "#D33A2C" }} disabled={ocupado}>×</button>
+                          )}
+                        </span>
+                      ))}
+                      {puedeEscribir && (
+                        <label className="inline-flex cursor-pointer items-center gap-1 text-xs" style={{ color: "var(--tenue)" }}>
+                          <Paperclip size={13} /> {comps.length ? "Agregar" : "Adjuntar comprobante"}
+                          <input type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={(e) => { agregarComprobante(p.id, e.target.files); e.target.value = ""; }} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -331,6 +376,10 @@ export function VentaDetalle({
           <label className="flex flex-col gap-1 text-sm font-medium">
             Observaciones
             <input className={inputCls} style={inputStyle} name="observaciones" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Comprobante(s) de transferencia <span style={{ color: "var(--tenue)" }}>(opcional)</span>
+            <input className={inputCls} style={inputStyle} name="comprobante" type="file" accept="image/*,application/pdf" multiple />
           </label>
           <div className="flex justify-end gap-2">
             <Button type="button" variante="plano" onClick={() => setModalPago(false)}>Cancelar</Button>
