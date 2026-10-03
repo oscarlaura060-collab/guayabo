@@ -70,7 +70,7 @@ export function VentasTabla({
   }
 
   // Número de columnas (para el colSpan de la fila desplegada).
-  const totalCols = 8 + (esAdmin ? 1 : 0);
+  const totalCols = 7 + (esAdmin ? 1 : 0);
 
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -123,7 +123,6 @@ export function VentasTabla({
               <th>Número</th>
               <th>Fecha</th>
               <th>Cliente</th>
-              <th>Prendas</th>
               <th>Estado</th>
               <th>Total</th>
               <th>Saldo</th>
@@ -140,7 +139,7 @@ export function VentasTabla({
                   <tr className="cursor-pointer" onClick={() => router.push(`/ventas/${v.id}`)}>
                     <td className="font-semibold" style={{ color: "var(--color-secundario)" }}>{v.numero}</td>
                     <td>{fmtFecha(v.fecha)}</td>
-                    <td>
+                    <td className="max-w-[20rem]">
                       {v.cliente_nombre ?? "—"}
                       {(v.canal || v.canal_usuario) && (
                         <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs" style={{ color: "var(--tenue)" }}>
@@ -153,20 +152,19 @@ export function VentasTabla({
                           {v.canal_usuario && <span>· {v.canal_usuario}</span>}
                         </div>
                       )}
-                    </td>
-                    <td className="max-w-[18rem]" onClick={(e) => { if (items.length) { e.stopPropagation(); toggle(v.id); } }}>
-                      {items.length > 0 ? (
+                      {items.length > 0 && (
                         <button
                           type="button"
-                          className="flex max-w-full items-center gap-1 text-left text-sm"
+                          onClick={(e) => { e.stopPropagation(); toggle(v.id); }}
+                          className="mt-0.5 flex max-w-full items-center gap-1 text-left text-xs"
                           style={{ color: "var(--color-secundario)" }}
                           title="Ver qué compró"
                           aria-expanded={open}
                         >
-                          <ChevronDown size={14} className="shrink-0 transition-transform" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }} />
+                          <ChevronDown size={13} className="shrink-0 transition-transform" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)" }} />
                           <span className="truncate">{v.prendas || "—"}</span>
                         </button>
-                      ) : <span style={{ color: "var(--tenue)" }}>—</span>}
+                      )}
                     </td>
                     <td><StatusChip texto={v.estado} color={coloresEstado[v.estado]} /></td>
                     <td className="num">{pesos(v.total)}</td>
