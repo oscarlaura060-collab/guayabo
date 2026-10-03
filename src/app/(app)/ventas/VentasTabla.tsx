@@ -21,6 +21,7 @@ export interface VentaRow {
   estado: string;
   canal: string | null;
   canal_usuario: string | null;
+  prendas?: string;
 }
 
 const colorCanal: Record<string, string> = {
@@ -53,7 +54,7 @@ export function VentasTabla({
     const t = q.trim().toLowerCase();
     if (!t) return ventas;
     return ventas.filter((v) =>
-      [v.numero, v.cliente_nombre, v.estado, v.canal, v.canal_usuario].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
+      [v.numero, v.cliente_nombre, v.estado, v.canal, v.canal_usuario, v.prendas].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
     );
   }, [ventas, q]);
 
@@ -100,6 +101,7 @@ export function VentasTabla({
               <th>Número</th>
               <th>Fecha</th>
               <th>Cliente</th>
+              <th>Prendas</th>
               <th>Estado</th>
               <th>Total</th>
               <th>Saldo</th>
@@ -125,6 +127,11 @@ export function VentasTabla({
                       {v.canal_usuario && <span>· {v.canal_usuario}</span>}
                     </div>
                   )}
+                </td>
+                <td className="max-w-[16rem]">
+                  <span className="block truncate text-sm" style={{ color: "var(--tenue)" }} title={v.prendas || undefined}>
+                    {v.prendas || "—"}
+                  </span>
                 </td>
                 <td><StatusChip texto={v.estado} color={coloresEstado[v.estado]} /></td>
                 <td className="num">{pesos(v.total)}</td>
