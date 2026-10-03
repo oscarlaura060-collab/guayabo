@@ -569,6 +569,7 @@ export type Database = {
           costo: number
           created_at: string
           descuento: number
+          direccion_envio: string | null
           envio: number
           est_pago: string
           estado: string
@@ -599,6 +600,7 @@ export type Database = {
           costo?: number
           created_at?: string
           descuento?: number
+          direccion_envio?: string | null
           envio?: number
           est_pago?: string
           estado?: string
@@ -629,6 +631,7 @@ export type Database = {
           costo?: number
           created_at?: string
           descuento?: number
+          direccion_envio?: string | null
           envio?: number
           est_pago?: string
           estado?: string

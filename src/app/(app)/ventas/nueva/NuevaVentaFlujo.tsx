@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound, Shirt, UserPlus } from "lucide-react";
+import { Search, Plus, Minus, Trash2, X, ShoppingBag, UserRound, Shirt, UserPlus, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { pesos } from "@/lib/format";
 import { urlImagenPrenda } from "@/lib/prendas";
 import type { Json } from "@/types/database.types";
-import { crearVenta } from "../actions";
+import { crearVenta, adjuntarComprobanteVenta } from "../actions";
 import { crearClienteRapido } from "../../clientes/actions";
 
 export interface ClienteOpt {
@@ -103,9 +103,11 @@ export function NuevaVentaFlujo({
   const [descuento, setDescuento] = useState("0");
   const [envio, setEnvio] = useState("0");
   const [fechaEntrega, setFechaEntrega] = useState("");
+  const [direccionEnvio, setDireccionEnvio] = useState("");
   const [metodo, setMetodo] = useState(metodos[0] ?? "Efectivo");
   const [valorPago, setValorPago] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const comprobanteRef = useRef<HTMLInputElement>(null);
 
   const clientesFiltrados = useMemo(() => {
     const t = clienteQuery.trim().toLowerCase();
@@ -167,6 +169,7 @@ export function NuevaVentaFlujo({
       // Guardamos también el nombre (elegido de la lista o escrito) para mostrarlo en los listados.
       cliente_nombre: clienteQuery.trim() || null,
       fecha_entrega: fechaEntrega || null,
+      direccion_envio: direccionEnvio.trim() || null,
       descuento: Number(descuento) || 0,
       envio: Number(envio) || 0,
       items: cart.map((it) => ({
@@ -181,6 +184,15 @@ export function NuevaVentaFlujo({
       })),
       pago: valor > 0 ? { valor, metodo } : null,
     });
+
+    // Si hay comprobante(s) y se cobró, adjuntarlos al pago recién creado.
+    const archivos = comprobanteRef.current?.files;
+    if (res.ok && res.id && valor > 0 && archivos && archivos.length > 0) {
+      const fd = new FormData();
+      for (const f of Array.from(archivos)) fd.append("comprobante", f);
+      const resC = await adjuntarComprobanteVenta(res.id, fd);
+      if (!resC.ok) toast(resC.error ?? "La venta se guardó, pero el comprobante no se pudo adjuntar", "error");
+    }
     setEnviando(false);
 
     if (res.ok) {
@@ -340,10 +352,16 @@ export function NuevaVentaFlujo({
 
       {/* Resumen + cobro */}
       <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-        <div className="gy-card p-4">
+        <div className="gy-card flex flex-col gap-3 p-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Fecha de entrega <span style={{ color: "var(--tenue)" }}>(opcional)</span>
             <input className={inputCls} style={inputStyle} type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            <span className="inline-flex items-center gap-1">
+              <MapPin size={14} style={{ color: "var(--color-secundario)" }} /> Dirección de envío <span style={{ color: "var(--tenue)" }}>(opcional)</span>
+            </span>
+            <textarea className={inputCls} style={inputStyle} rows={2} placeholder="Barrio, dirección, ciudad y referencias…" value={direccionEnvio} onChange={(e) => setDireccionEnvio(e.target.value)} />
           </label>
         </div>
 
@@ -377,6 +395,10 @@ export function NuevaVentaFlujo({
           <label className="flex flex-col gap-1 text-sm font-medium">
             Valor recibido
             <input className={inputCls} style={inputStyle} type="number" min="0" placeholder={String(total)} value={valorPago} onChange={(e) => setValorPago(e.target.value)} />
+          </label>
+          <label className="mt-2 flex flex-col gap-1 text-sm font-medium">
+            Comprobante de transferencia <span style={{ color: "var(--tenue)" }}>(opcional)</span>
+            <input ref={comprobanteRef} className={inputCls} style={inputStyle} type="file" accept="image/*,application/pdf" multiple />
           </label>
           {pago > 0 && saldo > 0 && <p className="mt-2 text-xs" style={{ color: "#9a6f0a" }}>Queda un saldo de {pesos(saldo)} (abono).</p>}
           {pago > total && <p className="mt-2 text-xs" style={{ color: "#D33A2C" }}>El pago supera el total.</p>}

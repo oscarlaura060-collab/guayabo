@@ -87,7 +87,7 @@ insert into public.listas (tipo, nombre, hex, ambito, es_final, orden, activo) v
 ('COLOR','Rojo','#D33A2C',null,false,7,true),
 ('COLOR','Gris','#8A8A8A',null,false,8,true),
 ('METODO_PAGO','Efectivo',null,null,false,1,true),
-('METODO_PAGO','Transferencia',null,null,false,2,true),
+('METODO_PAGO','Llave Nu',null,null,false,2,true),
 ('METODO_PAGO','Nequi',null,null,false,3,true),
 ('METODO_PAGO','Daviplata',null,null,false,4,true),
 ('METODO_PAGO','Bancolombia',null,null,false,5,true),

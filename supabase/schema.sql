@@ -134,6 +134,7 @@ create table if not exists public.pedidos (
   est_pago text not null default 'Pendiente' check (est_pago in ('Pendiente','Abono','Pagado','Reembolsado')),
   canal text,
   observaciones text,
+  direccion_envio text,
   extra jsonb not null default '{}'::jsonb,
   activo boolean not null default true,
   created_at timestamptz not null default now()

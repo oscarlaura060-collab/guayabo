@@ -227,6 +227,12 @@ export function VentaDetalle({
             </label>
             <Button variante="plano" onClick={guardarEntrega} disabled={ocupado}>Guardar</Button>
           </div>
+          {venta.direccion_envio && (
+            <div className="mt-3 text-sm">
+              <div className="text-xs" style={{ color: "var(--tenue)" }}>Dirección de envío</div>
+              <div className="whitespace-pre-line">{venta.direccion_envio}</div>
+            </div>
+          )}
         </div>
       )}
 

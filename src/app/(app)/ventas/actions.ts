@@ -26,6 +26,7 @@ const ventaSchema = z.object({
   cliente_id: z.string().uuid().nullable().optional(),
   cliente_nombre: z.string().trim().nullable().optional(),
   fecha_entrega: z.string().nullable().optional(),
+  direccion_envio: z.string().trim().nullable().optional(),
   descuento: z.coerce.number().min(0).default(0),
   envio: z.coerce.number().min(0).default(0),
   observaciones: z.string().trim().nullable().optional(),
@@ -85,11 +86,51 @@ export async function crearVenta(input: VentaInput & { fecha_entrega?: string | 
   const { data, error } = await supabase.rpc("crear_venta", { p_pedido, p_items, p_pago });
   if (error) return { ok: false, error: error.message };
 
+  // La dirección de envío se guarda aparte (crear_venta no la maneja).
+  if (v.direccion_envio) {
+    await supabase.from("pedidos").update({ direccion_envio: v.direccion_envio }).eq("id", data as string);
+  }
+
   const { data: pedido } = await supabase.from("pedidos").select("numero").eq("id", data as string).single();
   revalidatePath("/ventas");
   revalidatePath("/prendas");
   revalidatePath("/inventario");
   return { ok: true, numero: pedido?.numero ?? undefined, id: data as string };
+}
+
+/**
+ * Adjunta comprobantes al pago más reciente de una venta (el que se acaba de
+ * crear al cobrar). Permite subir la transferencia sin ir a Pagos.
+ */
+export async function adjuntarComprobanteVenta(ventaId: string, formData: FormData): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+  const supabase = await createClient();
+  const { data: pago } = await supabase
+    .from("pagos")
+    .select("id, comprobantes")
+    .eq("pedido_id", ventaId)
+    .eq("activo", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pago) return { ok: false, error: "No hay un pago al cual adjuntar el comprobante." };
+
+  let nuevos: string[] = [];
+  try {
+    nuevos = await subirComprobantesVenta(supabase, formData.getAll("comprobante"));
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "No se pudo subir el comprobante" };
+  }
+  if (nuevos.length === 0) return { ok: true };
+
+  const comprobantes = [...(pago.comprobantes ?? []), ...nuevos];
+  const { error } = await supabase.from("pagos").update({ comprobantes }).eq("id", pago.id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/ventas");
+  revalidatePath(`/ventas/${ventaId}`);
+  revalidatePath("/pagos");
+  return { ok: true };
 }
 
 /** Cambia el estado de la venta. Cancelar devuelve el stock. */

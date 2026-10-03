@@ -34,7 +34,7 @@ export interface PedidoPendiente {
 const inputCls = "rounded-xl border bg-[var(--color-tarjeta)] px-3 py-2 text-sm outline-none";
 const inputStyle = { borderColor: "var(--borde-suave)" } as const;
 const colorMetodo: Record<string, string> = {
-  Efectivo: "#3AA76D", Transferencia: "#7FB2F0", Nequi: "#E8288E",
+  Efectivo: "#3AA76D", "Llave Nu": "#820AD1", Transferencia: "#7FB2F0", Nequi: "#E8288E",
   Daviplata: "#D33A2C", Bancolombia: "#F4B740", Tarjeta: "#9B7FF0", Otro: "#8A8A8A",
 };
 
