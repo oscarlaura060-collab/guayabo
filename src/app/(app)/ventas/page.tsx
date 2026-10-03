@@ -24,25 +24,28 @@ export default async function VentasPage() {
   // Prendas de cada venta, para mostrarlas en la lista sin entrar al detalle.
   const ventasList = ventas ?? [];
   const ids = ventasList.map((v) => v.id);
-  const itemsPorVenta = new Map<string, { nombre: string | null; cantidad: number }[]>();
+  type Linea = { nombre: string | null; talla: string | null; color: string | null; cantidad: number; precio: number; total: number };
+  const itemsPorVenta = new Map<string, Linea[]>();
   if (ids.length) {
     const { data: its } = await supabase
       .from("pedido_items")
-      .select("pedido_id, nombre, cantidad")
+      .select("pedido_id, nombre, talla, color, cantidad, precio, total")
       .in("pedido_id", ids);
     for (const it of its ?? []) {
       const arr = itemsPorVenta.get(it.pedido_id) ?? [];
-      arr.push({ nombre: it.nombre, cantidad: it.cantidad });
+      arr.push({ nombre: it.nombre, talla: it.talla, color: it.color, cantidad: it.cantidad, precio: Number(it.precio), total: Number(it.total) });
       itemsPorVenta.set(it.pedido_id, arr);
     }
   }
-  function resumenPrendas(id: string): string {
-    const arr = itemsPorVenta.get(id) ?? [];
+  function resumenPrendas(arr: Linea[]): string {
     const partes = arr.map((i) => (i.cantidad > 1 ? `${i.cantidad}× ` : "") + (i.nombre ?? "—"));
     if (partes.length <= 3) return partes.join(", ");
     return `${partes.slice(0, 3).join(", ")} +${partes.length - 3}`;
   }
-  const filas = ventasList.map((v) => ({ ...v, prendas: resumenPrendas(v.id) }));
+  const filas = ventasList.map((v) => {
+    const items = itemsPorVenta.get(v.id) ?? [];
+    return { ...v, items, prendas: resumenPrendas(items) };
+  });
 
   const rol = rolDe(sesion);
   const puedeEscribir = rol === "ADMINISTRADOR" || rol === "VENDEDOR";
