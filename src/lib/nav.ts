@@ -2,7 +2,6 @@ import type { Rol } from "@/lib/auth";
 import {
   LayoutDashboard,
   ShoppingBag,
-  BookmarkCheck,
   Shirt,
   Boxes,
   Users,
@@ -11,7 +10,6 @@ import {
   TrendingUp,
   BarChart3,
   Settings,
-  Globe,
   Truck,
   type LucideIcon,
 } from "lucide-react";
@@ -34,9 +32,7 @@ const SOLO_ADMIN: Rol[] = ["ADMINISTRADOR"];
  */
 export const SECCIONES: Seccion[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
-  { href: "/pedidos-web", label: "Pedidos web", icon: Globe, roles: TODOS },
   { href: "/ventas", label: "Ventas", icon: ShoppingBag, roles: TODOS },
-  { href: "/apartados", label: "Apartados", icon: BookmarkCheck, roles: TODOS },
   { href: "/prendas", label: "Prendas", icon: Shirt, roles: TODOS },
   { href: "/inventario", label: "Inventario", icon: Boxes, roles: TODOS },
   { href: "/clientes", label: "Clientes", icon: Users, roles: TODOS },
