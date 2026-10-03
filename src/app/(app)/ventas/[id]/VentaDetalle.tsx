@@ -17,6 +17,7 @@ import {
   marcarNotificado,
   registrarPago,
   actualizarEntrega,
+  actualizarOrigen,
   eliminarVenta,
 } from "../actions";
 import { subirComprobante, eliminarComprobante } from "../../pagos/actions";
@@ -38,6 +39,7 @@ export function VentaDetalle({
   cliente,
   estados,
   metodos,
+  canales,
   marca,
   puedeEscribir,
   esAdmin,
@@ -48,6 +50,7 @@ export function VentaDetalle({
   cliente: { nombre: string; whatsapp: string | null; email: string | null } | null;
   estados: { nombre: string; hex: string | null }[];
   metodos: string[];
+  canales: string[];
   marca: string;
   puedeEscribir: boolean;
   esAdmin: boolean;
@@ -62,6 +65,9 @@ export function VentaDetalle({
   const [urlRastreo, setUrlRastreo] = useState(venta.url_rastreo ?? "");
   const [notificado, setNotificado] = useState(venta.notificado_envio);
   const [entrega, setEntrega] = useState(venta.fecha_entrega ?? "");
+  const [canal, setCanal] = useState(venta.canal ?? "");
+  const [canalUsuario, setCanalUsuario] = useState(venta.canal_usuario ?? "");
+  const [direccion, setDireccion] = useState(venta.direccion_envio ?? "");
   const [ocupado, setOcupado] = useState(false);
 
   const colorEstado = estados.find((e) => e.nombre === estado)?.hex ?? undefined;
@@ -101,6 +107,14 @@ export function VentaDetalle({
     const res = await actualizarEntrega(venta.id, entrega || null);
     setOcupado(false);
     if (res.ok) { toast("Fecha de entrega actualizada", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
+
+  async function guardarOrigen() {
+    setOcupado(true);
+    const res = await actualizarOrigen(venta.id, { canal, canal_usuario: canalUsuario, direccion_envio: direccion });
+    setOcupado(false);
+    if (res.ok) { toast("Origen y envío actualizados", "exito"); router.refresh(); }
     else toast(res.error ?? "Error", "error");
   }
 
@@ -232,12 +246,34 @@ export function VentaDetalle({
             </label>
             <Button variante="plano" onClick={guardarEntrega} disabled={ocupado}>Guardar</Button>
           </div>
-          {venta.direccion_envio && (
-            <div className="mt-3 text-sm">
-              <div className="text-xs" style={{ color: "var(--tenue)" }}>Dirección de envío</div>
-              <div className="whitespace-pre-line">{venta.direccion_envio}</div>
-            </div>
-          )}
+        </div>
+      )}
+
+      {/* Origen y envío (editable en cualquier momento) */}
+      {puedeEscribir && (
+        <div className="gy-card p-4">
+          <div className="mb-3 text-sm font-semibold">Origen y envío</div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm">
+              <span style={{ color: "var(--tenue)" }}>¿De dónde fue la venta?</span>
+              <select className={inputCls} style={inputStyle} value={canal} onChange={(e) => setCanal(e.target.value)}>
+                <option value="">Sin especificar</option>
+                {canales.map((c) => <option key={c} value={c}>{c}</option>)}
+                {canal && !canales.includes(canal) && <option value={canal}>{canal}</option>}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span style={{ color: "var(--tenue)" }}>Usuario / @</span>
+              <input className={inputCls} style={inputStyle} placeholder="@usuario de Instagram, TikTok…" value={canalUsuario} onChange={(e) => setCanalUsuario(e.target.value)} />
+            </label>
+          </div>
+          <label className="mt-3 flex flex-col gap-1 text-sm">
+            <span style={{ color: "var(--tenue)" }}>Dirección de envío</span>
+            <textarea className={inputCls} style={inputStyle} rows={2} placeholder="Barrio, dirección, ciudad y referencias…" value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+          </label>
+          <div className="mt-3 flex justify-end">
+            <Button variante="plano" onClick={guardarOrigen} disabled={ocupado}>Guardar</Button>
+          </div>
         </div>
       )}
 

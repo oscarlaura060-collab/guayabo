@@ -181,6 +181,27 @@ export async function cambiarEstado(ventaId: string, estado: string): Promise<Re
   return { ok: true };
 }
 
+/** Edita el origen de la venta (canal, usuario/@) y la dirección de envío. */
+export async function actualizarOrigen(
+  ventaId: string,
+  datos: { canal?: string | null; canal_usuario?: string | null; direccion_envio?: string | null },
+): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pedidos")
+    .update({
+      canal: datos.canal?.trim() || null,
+      canal_usuario: datos.canal_usuario?.trim() || null,
+      direccion_envio: datos.direccion_envio?.trim() || null,
+    })
+    .eq("id", ventaId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/ventas");
+  revalidatePath(`/ventas/${ventaId}`);
+  return { ok: true };
+}
+
 /** Actualiza la fecha de entrega estimada. */
 export async function actualizarEntrega(ventaId: string, fecha_entrega: string | null): Promise<Resultado> {
   if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };

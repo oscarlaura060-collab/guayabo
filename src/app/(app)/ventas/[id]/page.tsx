@@ -15,11 +15,12 @@ export default async function VentaPage({ params }: { params: Promise<{ id: stri
   const { data: venta } = await supabase.from("pedidos").select("*").eq("id", id).single();
   if (!venta) notFound();
 
-  const [{ data: items }, { data: pagos }, estados, metodos, sesion, { data: marcaRow }] = await Promise.all([
+  const [{ data: items }, { data: pagos }, estados, metodos, canales, sesion, { data: marcaRow }] = await Promise.all([
     supabase.from("pedido_items").select("*").eq("pedido_id", id),
     supabase.from("pagos").select("*").eq("pedido_id", id).eq("activo", true).order("fecha"),
     getListas("ESTADO", "PEDIDO"),
     getListas("METODO_PAGO"),
+    getListas("CANAL"),
     getSesion(),
     supabase.from("config").select("valor").eq("clave", "NOMBRE_MARCA").maybeSingle(),
   ]);
@@ -45,6 +46,7 @@ export default async function VentaPage({ params }: { params: Promise<{ id: stri
         cliente={cliente}
         estados={estados.map((e) => ({ nombre: e.nombre, hex: e.hex }))}
         metodos={metodos.map((m) => m.nombre)}
+        canales={canales.map((c) => c.nombre)}
         marca={marcaRow?.valor || "GUAYABO"}
         puedeEscribir={puedeEscribir}
         esAdmin={rol === "ADMINISTRADOR"}
