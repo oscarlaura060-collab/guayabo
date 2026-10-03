@@ -176,6 +176,11 @@ export function VentaDetalle({
             <p className="text-sm" style={{ color: "var(--tenue)" }}>
               {venta.cliente_nombre ?? cliente?.nombre ?? "Sin cliente"} · {fmtFecha(venta.fecha)}
             </p>
+            {(venta.canal || venta.canal_usuario) && (
+              <p className="mt-0.5 text-sm" style={{ color: "var(--tenue)" }}>
+                Origen: {[venta.canal, venta.canal_usuario].filter(Boolean).join(" · ")}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2">
             <StatusChip texto={estado} color={colorEstado} />

@@ -13,7 +13,7 @@ export default async function VentasPage() {
   const [{ data: ventas }, coloresEstado, sesion] = await Promise.all([
     supabase
       .from("pedidos")
-      .select("id, numero, fecha, fecha_entrega, cliente_nombre, total, saldo, est_pago, estado")
+      .select("id, numero, fecha, fecha_entrega, cliente_nombre, total, saldo, est_pago, estado, canal, canal_usuario")
       .eq("activo", true)
       .order("fecha", { ascending: false })
       .limit(200),

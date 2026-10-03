@@ -19,7 +19,14 @@ export interface VentaRow {
   saldo: number;
   est_pago: string;
   estado: string;
+  canal: string | null;
+  canal_usuario: string | null;
 }
+
+const colorCanal: Record<string, string> = {
+  Instagram: "#E8288E", WhatsApp: "#25D366", TikTok: "#191914",
+  Facebook: "#1877F2", Presencial: "#3AA76D", "Tienda web": "#7FB2F0", Otro: "#8A8A8A",
+};
 
 const colorPago: Record<string, string> = {
   Pagado: "#3AA76D",
@@ -46,7 +53,7 @@ export function VentasTabla({
     const t = q.trim().toLowerCase();
     if (!t) return ventas;
     return ventas.filter((v) =>
-      [v.numero, v.cliente_nombre, v.estado].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
+      [v.numero, v.cliente_nombre, v.estado, v.canal, v.canal_usuario].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
     );
   }, [ventas, q]);
 
@@ -80,7 +87,7 @@ export function VentasTabla({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por número, cliente o estado…"
+          placeholder="Buscar por número, cliente, estado, canal o @usuario…"
           className="w-full rounded-full border bg-[var(--color-tarjeta)] py-2 pl-9 pr-3 text-sm outline-none"
           style={{ borderColor: "var(--borde-suave)" }}
         />
@@ -105,7 +112,20 @@ export function VentasTabla({
               <tr key={v.id} className="cursor-pointer" onClick={() => router.push(`/ventas/${v.id}`)}>
                 <td className="font-semibold" style={{ color: "var(--color-secundario)" }}>{v.numero}</td>
                 <td>{fmtFecha(v.fecha)}</td>
-                <td>{v.cliente_nombre ?? "—"}</td>
+                <td>
+                  {v.cliente_nombre ?? "—"}
+                  {(v.canal || v.canal_usuario) && (
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs" style={{ color: "var(--tenue)" }}>
+                      {v.canal && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="inline-block h-2 w-2 rounded-full" style={{ background: colorCanal[v.canal] ?? "#8A8A8A" }} />
+                          {v.canal}
+                        </span>
+                      )}
+                      {v.canal_usuario && <span>· {v.canal_usuario}</span>}
+                    </div>
+                  )}
+                </td>
                 <td><StatusChip texto={v.estado} color={coloresEstado[v.estado]} /></td>
                 <td className="num">{pesos(v.total)}</td>
                 <td className="num" style={{ color: v.saldo > 0 ? "#D33A2C" : undefined }}>{pesos(v.saldo)}</td>

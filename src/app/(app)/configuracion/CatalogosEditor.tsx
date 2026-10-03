@@ -22,6 +22,7 @@ const TIPOS: { tipo: string; label: string; color: boolean; ambito: boolean }[] 
   { tipo: "TALLA", label: "Tallas", color: false, ambito: false },
   { tipo: "COLOR", label: "Colores de prenda", color: true, ambito: false },
   { tipo: "METODO_PAGO", label: "Métodos de pago", color: false, ambito: false },
+  { tipo: "CANAL", label: "Canales de venta", color: true, ambito: false },
   { tipo: "CATEGORIA_GASTO", label: "Categorías de gasto", color: false, ambito: false },
   { tipo: "COMPONENTE_COSTO", label: "Componentes de costo", color: false, ambito: false },
   { tipo: "ESTADO", label: "Estados", color: true, ambito: true },

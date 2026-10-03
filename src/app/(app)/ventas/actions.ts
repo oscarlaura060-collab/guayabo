@@ -27,6 +27,8 @@ const ventaSchema = z.object({
   cliente_nombre: z.string().trim().nullable().optional(),
   fecha_entrega: z.string().nullable().optional(),
   direccion_envio: z.string().trim().nullable().optional(),
+  canal: z.string().trim().nullable().optional(),
+  canal_usuario: z.string().trim().nullable().optional(),
   descuento: z.coerce.number().min(0).default(0),
   envio: z.coerce.number().min(0).default(0),
   observaciones: z.string().trim().nullable().optional(),
@@ -65,6 +67,7 @@ export async function crearVenta(input: VentaInput & { fecha_entrega?: string | 
     fecha_entrega: v.fecha_entrega ?? null,
     descuento: v.descuento,
     envio: v.envio,
+    canal: v.canal ?? null,
     observaciones: v.observaciones ?? null,
   };
   const p_items = v.items.map((it) => ({
@@ -86,9 +89,12 @@ export async function crearVenta(input: VentaInput & { fecha_entrega?: string | 
   const { data, error } = await supabase.rpc("crear_venta", { p_pedido, p_items, p_pago });
   if (error) return { ok: false, error: error.message };
 
-  // La dirección de envío se guarda aparte (crear_venta no la maneja).
-  if (v.direccion_envio) {
-    await supabase.from("pedidos").update({ direccion_envio: v.direccion_envio }).eq("id", data as string);
+  // Dirección de envío y usuario del canal se guardan aparte (crear_venta no los maneja).
+  if (v.direccion_envio || v.canal_usuario) {
+    await supabase
+      .from("pedidos")
+      .update({ direccion_envio: v.direccion_envio || null, canal_usuario: v.canal_usuario || null })
+      .eq("id", data as string);
   }
 
   const { data: pedido } = await supabase.from("pedidos").select("numero").eq("id", data as string).single();

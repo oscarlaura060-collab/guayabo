@@ -48,12 +48,14 @@ export function NuevaVentaFlujo({
   clientes,
   prendas,
   metodos,
+  canales,
   ventaBajoPedido,
   permitirStockNegativo,
 }: {
   clientes: ClienteOpt[];
   prendas: PrendaOpt[];
   metodos: string[];
+  canales: string[];
   ventaBajoPedido: boolean;
   permitirStockNegativo: boolean;
 }) {
@@ -104,6 +106,8 @@ export function NuevaVentaFlujo({
   const [envio, setEnvio] = useState("0");
   const [fechaEntrega, setFechaEntrega] = useState("");
   const [direccionEnvio, setDireccionEnvio] = useState("");
+  const [canal, setCanal] = useState("");
+  const [canalUsuario, setCanalUsuario] = useState("");
   const [metodo, setMetodo] = useState(metodos[0] ?? "Efectivo");
   const [valorPago, setValorPago] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -170,6 +174,8 @@ export function NuevaVentaFlujo({
       cliente_nombre: clienteQuery.trim() || null,
       fecha_entrega: fechaEntrega || null,
       direccion_envio: direccionEnvio.trim() || null,
+      canal: canal.trim() || null,
+      canal_usuario: canalUsuario.trim() || null,
       descuento: Number(descuento) || 0,
       envio: Number(envio) || 0,
       items: cart.map((it) => ({
@@ -249,6 +255,21 @@ export function NuevaVentaFlujo({
           {!clienteId && clienteQuery && (
             <p className="mt-2 text-xs" style={{ color: "var(--tenue)" }}>Se registrará como “{clienteQuery}” sin ficha de cliente.</p>
           )}
+
+          {/* Origen de la venta (canal) + usuario, para encontrarla rápido */}
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              ¿De dónde fue la venta?
+              <select className={inputCls} style={inputStyle} value={canal} onChange={(e) => setCanal(e.target.value)}>
+                <option value="">Sin especificar</option>
+                {canales.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Usuario / @ <span style={{ color: "var(--tenue)" }}>(opcional)</span>
+              <input className={inputCls} style={inputStyle} placeholder="@usuario de Instagram, TikTok…" value={canalUsuario} onChange={(e) => setCanalUsuario(e.target.value)} />
+            </label>
+          </div>
         </div>
 
         {/* Prendas */}

@@ -16,7 +16,7 @@ export default async function NuevaVentaPage() {
   if (rol !== "ADMINISTRADOR" && rol !== "VENDEDOR") redirect("/ventas");
 
   const supabase = await createClient();
-  const [{ data: clientes }, { data: prendas }, metodosLista, config] = await Promise.all([
+  const [{ data: clientes }, { data: prendas }, metodosLista, canalesLista, config] = await Promise.all([
     supabase.from("clientes").select("id, nombre, codigo").eq("activo", true).order("nombre"),
     supabase
       .from("prendas")
@@ -24,6 +24,7 @@ export default async function NuevaVentaPage() {
       .eq("activo", true)
       .order("nombre"),
     getListas("METODO_PAGO"),
+    getListas("CANAL"),
     getConfig().catch(() => ({}) as Record<string, string>),
   ]);
 
@@ -37,6 +38,7 @@ export default async function NuevaVentaPage() {
         clientes={clientes ?? []}
         prendas={prendas ?? []}
         metodos={(metodosLista ?? []).map((m) => m.nombre)}
+        canales={(canalesLista ?? []).map((c) => c.nombre)}
         ventaBajoPedido={config.VENTA_BAJO_PEDIDO === "TRUE"}
         permitirStockNegativo={config.PERMITIR_STOCK_NEGATIVO === "TRUE"}
       />

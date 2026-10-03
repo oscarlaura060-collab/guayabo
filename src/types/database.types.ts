@@ -564,6 +564,7 @@ export type Database = {
         Row: {
           activo: boolean
           canal: string | null
+          canal_usuario: string | null
           cliente_id: string | null
           cliente_nombre: string | null
           costo: number
@@ -595,6 +596,7 @@ export type Database = {
         Insert: {
           activo?: boolean
           canal?: string | null
+          canal_usuario?: string | null
           cliente_id?: string | null
           cliente_nombre?: string | null
           costo?: number
@@ -626,6 +628,7 @@ export type Database = {
         Update: {
           activo?: boolean
           canal?: string | null
+          canal_usuario?: string | null
           cliente_id?: string | null
           cliente_nombre?: string | null
           costo?: number
