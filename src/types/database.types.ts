@@ -707,6 +707,7 @@ export type Database = {
           descripcion: string | null
           destacado: boolean
           extra: Json
+          hecho_por: string | null
           id: string
           imagen_path: string | null
           legacy_id: string | null
@@ -731,6 +732,7 @@ export type Database = {
           descripcion?: string | null
           destacado?: boolean
           extra?: Json
+          hecho_por?: string | null
           medidas?: Json
           id?: string
           imagen_path?: string | null
@@ -755,6 +757,7 @@ export type Database = {
           descripcion?: string | null
           destacado?: boolean
           extra?: Json
+          hecho_por?: string | null
           id?: string
           imagen_path?: string | null
           legacy_id?: string | null

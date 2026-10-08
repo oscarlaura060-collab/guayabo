@@ -23,6 +23,7 @@ export interface PrendaStock {
   vendidas: number;
   precio: number;
   costo: number;
+  hecho_por: string | null;
 }
 export interface Movimiento {
   id: string;
@@ -55,8 +56,14 @@ export function InventarioManager({
   const [tab, setTab] = useState<"stock" | "movimientos">("stock");
   const [q, setQ] = useState("");
   const [soloBajo, setSoloBajo] = useState(false);
+  const [hechoPor, setHechoPor] = useState("");
   const [ajuste, setAjuste] = useState<PrendaStock | null>(null);
   const [ocupado, setOcupado] = useState(false);
+
+  const confeccionistas = useMemo(
+    () => [...new Set(prendas.map((p) => (p.hecho_por ?? "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [prendas],
+  );
 
   const bajos = prendas.filter((p) => p.stock <= p.stock_minimo);
   const unidades = prendas.reduce((s, p) => s + p.stock, 0);
@@ -68,13 +75,24 @@ export function InventarioManager({
     const t = q.trim().toLowerCase();
     let r = prendas;
     if (soloBajo) r = r.filter((p) => p.stock <= p.stock_minimo);
+    if (hechoPor) r = r.filter((p) => (p.hecho_por ?? "").trim() === hechoPor);
     if (t) {
       r = r.filter((p) =>
-        [p.nombre, p.codigo, p.talla, p.color].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
+        [p.nombre, p.codigo, p.talla, p.color, p.hecho_por].filter(Boolean).some((x) => String(x).toLowerCase().includes(t)),
       );
     }
     return [...r].sort((a, b) => a.stock - b.stock);
-  }, [prendas, q, soloBajo]);
+  }, [prendas, q, soloBajo, hechoPor]);
+
+  const resumenHechoPor = useMemo(() => {
+    if (!hechoPor) return null;
+    const suyas = prendas.filter((p) => (p.hecho_por ?? "").trim() === hechoPor);
+    return {
+      prendas: suyas.length,
+      unidades: suyas.reduce((s, p) => s + p.stock, 0),
+      vendidas: suyas.reduce((s, p) => s + p.vendidas, 0),
+    };
+  }, [prendas, hechoPor]);
 
   async function onAjustar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -145,10 +163,38 @@ export function InventarioManager({
                 style={{ borderColor: "var(--borde-suave)" }}
               />
             </label>
+            {confeccionistas.length > 0 && (
+              <label className="flex items-center gap-2 text-sm font-medium">
+                Hecho por
+                <select
+                  className={inputCls}
+                  style={inputStyle}
+                  value={hechoPor}
+                  onChange={(e) => setHechoPor(e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {confeccionistas.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={soloBajo} onChange={(e) => setSoloBajo(e.target.checked)} /> Solo stock bajo
             </label>
           </div>
+
+          {resumenHechoPor && (
+            <div
+              className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-2xl border p-3 text-sm"
+              style={{ borderColor: "color-mix(in srgb, var(--color-secundario) 40%, transparent)", background: "color-mix(in srgb, var(--color-secundario) 10%, transparent)" }}
+            >
+              <span className="font-semibold">Prendas realizadas por {hechoPor}</span>
+              <span><b>{resumenHechoPor.prendas}</b> prenda(s)</span>
+              <span><b>{resumenHechoPor.unidades}</b> unidad(es) en stock</span>
+              <span><b>{resumenHechoPor.vendidas}</b> vendida(s)</span>
+            </div>
+          )}
 
           {lista.length === 0 ? (
             <Vacio icono={<Boxes size={28} />} titulo="Sin prendas" descripcion="No hay prendas que coincidan." />
@@ -157,7 +203,7 @@ export function InventarioManager({
               <table className="gy-table">
                 <thead>
                   <tr>
-                    <th>Prenda</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th>Vendidas</th>
+                    <th>Prenda</th><th>Hecho por</th><th>Stock</th><th>Mínimo</th><th>Estado</th><th>Vendidas</th>
                     {puedeEscribir && <th></th>}
                   </tr>
                 </thead>
@@ -171,6 +217,19 @@ export function InventarioManager({
                           <div className="text-xs" style={{ color: "var(--tenue)" }}>
                             {[p.codigo, p.talla, p.color].filter(Boolean).join(" · ")}
                           </div>
+                        </td>
+                        <td>
+                          {p.hecho_por ? (
+                            <button
+                              className="rounded-full px-2 py-0.5 text-xs font-medium"
+                              style={{ background: "color-mix(in srgb, var(--color-secundario) 14%, transparent)", color: "var(--color-secundario)" }}
+                              onClick={() => { setTab("stock"); setHechoPor(p.hecho_por!.trim()); }}
+                            >
+                              {p.hecho_por}
+                            </button>
+                          ) : (
+                            <span style={{ color: "var(--tenue)" }}>—</span>
+                          )}
                         </td>
                         <td className="num font-semibold">{p.stock}</td>
                         <td className="num">{p.stock_minimo}</td>

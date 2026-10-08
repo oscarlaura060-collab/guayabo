@@ -17,21 +17,24 @@ export interface CatalogosPrenda {
   tallas: string[];
   colores: { nombre: string; hex: string | null }[];
   componentes: string[];
+  confecciones: string[];
 }
 
 /** Catálogos que necesita el formulario de prendas. */
 export async function getCatalogosPrenda(): Promise<CatalogosPrenda> {
-  const [categorias, tallas, colores, componentes] = await Promise.all([
+  const [categorias, tallas, colores, componentes, confecciones] = await Promise.all([
     getListas("CATEGORIA"),
     getListas("TALLA"),
     getListas("COLOR"),
     getListas("COMPONENTE_COSTO"),
+    getListas("CONFECCION"),
   ]);
   return {
     categorias: categorias.map((c) => c.nombre),
     tallas: tallas.map((t) => t.nombre),
     colores: colores.map((c) => ({ nombre: c.nombre, hex: c.hex })),
     componentes: componentes.map((c) => c.nombre),
+    confecciones: confecciones.map((c) => c.nombre),
   };
 }
 

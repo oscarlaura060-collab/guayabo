@@ -25,6 +25,7 @@ const TIPOS: { tipo: string; label: string; color: boolean; ambito: boolean }[] 
   { tipo: "CANAL", label: "Canales de venta", color: true, ambito: false },
   { tipo: "CATEGORIA_GASTO", label: "Categorías de gasto", color: false, ambito: false },
   { tipo: "COMPONENTE_COSTO", label: "Componentes de costo", color: false, ambito: false },
+  { tipo: "CONFECCION", label: "Quién confecciona", color: false, ambito: false },
   { tipo: "ESTADO", label: "Estados", color: true, ambito: true },
 ];
 const AMBITOS = ["PEDIDO", "APARTADO", "PAGO"];
