@@ -38,7 +38,9 @@ export default async function VentasPage() {
     }
   }
   function resumenPrendas(arr: Linea[]): string {
-    const partes = arr.map((i) => (i.cantidad > 1 ? `${i.cantidad}× ` : "") + (i.nombre ?? "—"));
+    const partes = arr.map((i) =>
+      (i.cantidad > 1 ? `${i.cantidad}× ` : "") + (i.nombre ?? "—") + (i.talla ? ` · ${i.talla}` : ""),
+    );
     if (partes.length <= 3) return partes.join(", ");
     return `${partes.slice(0, 3).join(", ")} +${partes.length - 3}`;
   }

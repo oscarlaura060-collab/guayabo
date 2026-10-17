@@ -49,6 +49,7 @@ export function PrendaForm({
   const [previewUrl, setPreviewUrl] = useState<string | null>(prenda ? urlImagenPrenda(prenda) : null);
   const [destacado, setDestacado] = useState(prenda?.destacado ?? false);
   const [composicion, setComposicion] = useState(prenda?.composicion ?? "");
+  const [hechoPor, setHechoPor] = useState(prenda?.hecho_por ?? "");
   const [enviando, setEnviando] = useState(false);
 
   // Tallas y cantidades (crear y editar): grid de todas las tallas del producto.
@@ -126,6 +127,7 @@ export function PrendaForm({
     fd.set("observaciones", observaciones);
     fd.set("destacado", destacado ? "on" : "");
     fd.set("composicion", composicion);
+    fd.set("hecho_por", hechoPor);
     fd.set("medidas", JSON.stringify({ nota: medNota, columnas: medCols, filas: medFilas }));
     fd.set(
       "costos",
@@ -211,6 +213,21 @@ export function PrendaForm({
           <input className={inputCls} style={inputStyle} type="number" min="0" value={stockMin} onChange={(e) => setStockMin(e.target.value)} />
         </label>
       </div>
+
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Hecho por <span className="font-normal" style={{ color: "var(--tenue)" }}>(quién la confecciona)</span>
+        <input
+          className={inputCls}
+          style={inputStyle}
+          list="confecciones"
+          value={hechoPor}
+          onChange={(e) => setHechoPor(e.target.value)}
+          placeholder="Ej. Cristina"
+        />
+        <datalist id="confecciones">
+          {catalogos.confecciones.map((c) => <option key={c} value={c} />)}
+        </datalist>
+      </label>
 
       {/* Tallas y cantidades (crear = varias a la vez; editar = todo el producto) */}
       <div className="rounded-2xl border p-3" style={{ borderColor: "var(--borde-suave)" }}>

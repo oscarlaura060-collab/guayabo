@@ -107,6 +107,9 @@ create table if not exists public.prendas (
   vendidas int not null default 0,
   imagen_path text,
   observaciones text,
+  hecho_por text,
+  solicitada boolean not null default false,
+  solicitada_nota text,
   extra jsonb not null default '{}'::jsonb,
   activo boolean not null default true,
   created_at timestamptz not null default now()

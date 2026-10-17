@@ -117,6 +117,7 @@ insert into public.listas (tipo, nombre, hex, ambito, es_final, orden, activo) v
 ('COMPONENTE_COSTO','Empaque',null,null,false,6,true),
 ('COMPONENTE_COSTO','Transporte',null,null,false,7,true),
 ('COMPONENTE_COSTO','Otros',null,null,false,8,true),
+('CONFECCION','Cristina',null,null,false,1,true),
 ('ESTADO','Pedido recibido','#D2DE52','PEDIDO',false,1,true),
 ('ESTADO','Pago pendiente','#F4B740','PEDIDO',false,2,true),
 ('ESTADO','Pagado','#5BC48B','PEDIDO',false,3,true),
