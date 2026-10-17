@@ -715,6 +715,8 @@ export type Database = {
           nombre: string
           observaciones: string | null
           precio: number
+          solicitada: boolean
+          solicitada_nota: string | null
           stock: number
           stock_minimo: number
           talla: string | null
@@ -740,6 +742,8 @@ export type Database = {
           nombre: string
           observaciones?: string | null
           precio?: number
+          solicitada?: boolean
+          solicitada_nota?: string | null
           stock?: number
           stock_minimo?: number
           talla?: string | null
@@ -765,6 +769,8 @@ export type Database = {
           nombre?: string
           observaciones?: string | null
           precio?: number
+          solicitada?: boolean
+          solicitada_nota?: string | null
           stock?: number
           stock_minimo?: number
           talla?: string | null

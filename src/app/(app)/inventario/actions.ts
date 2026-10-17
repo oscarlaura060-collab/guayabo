@@ -84,3 +84,40 @@ export async function ajustarStock(formData: FormData): Promise<Resultado> {
   revalidatePath("/prendas");
   return { ok: true };
 }
+
+const solicitudSchema = z.object({
+  prenda_id: z.string().uuid(),
+  solicitada: z.boolean(),
+  nota: z.string().trim().max(300).optional().nullable(),
+});
+
+/**
+ * Marca (o desmarca) una prenda como "solicitada por un cliente", con una nota
+ * opcional de quién la pidió. Sirve para saber qué mandar a hacer con Cristina.
+ */
+export async function marcarSolicitada(input: {
+  prendaId: string;
+  solicitada: boolean;
+  nota?: string | null;
+}): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+
+  const parsed = solicitudSchema.safeParse({
+    prenda_id: input.prendaId,
+    solicitada: input.solicitada,
+    nota: input.nota,
+  });
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("prendas")
+    .update({ solicitada: v.solicitada, solicitada_nota: v.solicitada ? v.nota || null : null })
+    .eq("id", v.prenda_id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/inventario");
+  revalidatePath("/prendas");
+  return { ok: true };
+}
