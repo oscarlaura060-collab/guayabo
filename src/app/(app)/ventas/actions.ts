@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getConfig } from "@/lib/config";
 import { getSesion, rolDe } from "@/lib/auth";
 import { mensajeEnvio, mensajeEnvioHtml } from "@/lib/envio";
 
@@ -135,6 +136,129 @@ export async function adjuntarComprobanteVenta(ventaId: string, formData: FormDa
 
   revalidatePath("/ventas");
   revalidatePath(`/ventas/${ventaId}`);
+  revalidatePath("/pagos");
+  return { ok: true };
+}
+
+const editarLineaSchema = z.object({
+  id: z.string().uuid(),
+  cantidad: z.coerce.number().int().min(1),
+  precio: z.coerce.number().min(0),
+});
+
+/**
+ * Edita las prendas de una venta ya creada: cambia cantidades/precios y permite
+ * quitar líneas. Ajusta el stock (devuelve o descuenta la diferencia), registra
+ * los movimientos, recalcula los totales del pedido y refresca pagado/saldo.
+ * `lineas` son las líneas que quedan; cualquier línea actual que no esté ahí se elimina.
+ */
+export async function editarItemsVenta(
+  ventaId: string,
+  lineas: { id: string; cantidad: number; precio: number }[],
+): Promise<Resultado> {
+  if (!(await puedeEscribir())) return { ok: false, error: "Sin permiso." };
+
+  const parsed = z.array(editarLineaSchema).safeParse(lineas);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  const deseadas = parsed.data;
+  if (deseadas.length === 0) return { ok: false, error: "La venta debe tener al menos una prenda." };
+
+  const supabase = await createClient();
+  const { data: venta } = await supabase
+    .from("pedidos")
+    .select("id, numero, estado, descuento, envio")
+    .eq("id", ventaId)
+    .single();
+  if (!venta) return { ok: false, error: "Venta no encontrada." };
+  if (venta.estado === "Cancelado") return { ok: false, error: "No se puede editar una venta cancelada." };
+
+  const { data: actuales } = await supabase
+    .from("pedido_items")
+    .select("id, prenda_id, nombre, talla, color, cantidad, precio, descuento, costo_unit")
+    .eq("pedido_id", ventaId);
+  if (!actuales || actuales.length === 0) return { ok: false, error: "La venta no tiene prendas." };
+
+  const config = await getConfig().catch(() => ({}) as Record<string, string>);
+  const permitirNegativo = config.PERMITIR_STOCK_NEGATIVO === "TRUE";
+  const deseadaPorId = new Map(deseadas.map((l) => [l.id, l]));
+
+  // Verifica que las líneas pedidas existan en la venta.
+  for (const l of deseadas) {
+    if (!actuales.some((a) => a.id === l.id)) return { ok: false, error: "Alguna línea no pertenece a la venta." };
+  }
+
+  // 1) Ajuste de stock por cada línea (diferencia de cantidad; eliminada = toda su cantidad).
+  for (const a of actuales) {
+    const deseada = deseadaPorId.get(a.id);
+    const nuevaCantidad = deseada ? deseada.cantidad : 0; // 0 = eliminada
+    const delta = nuevaCantidad - a.cantidad; // >0 vende más (resta stock); <0 devuelve
+    if (delta === 0 || !a.prenda_id) continue;
+
+    const { data: pr } = await supabase.from("prendas").select("stock, vendidas").eq("id", a.prenda_id).single();
+    if (!pr) continue;
+    const nuevoStock = pr.stock - delta;
+    if (nuevoStock < 0 && !permitirNegativo) {
+      return { ok: false, error: `No hay stock suficiente de "${a.nombre ?? ""}" para aumentar la cantidad.` };
+    }
+    await supabase
+      .from("prendas")
+      .update({ stock: nuevoStock, vendidas: Math.max(0, pr.vendidas + delta) })
+      .eq("id", a.prenda_id);
+    await supabase.from("movimientos_inventario").insert({
+      prenda_id: a.prenda_id,
+      prenda_nombre: a.nombre,
+      tipo: delta > 0 ? "SALIDA" : "ENTRADA",
+      cantidad: Math.abs(delta),
+      stock_anterior: pr.stock,
+      stock_nuevo: nuevoStock,
+      referencia: `Edición ${venta.numero ?? ""}`,
+    });
+  }
+
+  // 2) Aplica los cambios a las líneas (actualiza o elimina).
+  for (const a of actuales) {
+    const deseada = deseadaPorId.get(a.id);
+    if (!deseada) {
+      await supabase.from("pedido_items").delete().eq("id", a.id);
+      continue;
+    }
+    const total = deseada.precio * deseada.cantidad - Number(a.descuento ?? 0);
+    const costoTotal = Number(a.costo_unit ?? 0) * deseada.cantidad;
+    await supabase
+      .from("pedido_items")
+      .update({
+        cantidad: deseada.cantidad,
+        precio: deseada.precio,
+        total,
+        costo_total: costoTotal,
+        utilidad: total - costoTotal,
+      })
+      .eq("id", a.id);
+  }
+
+  // 3) Recalcula los totales del pedido con las líneas que quedan.
+  let subtotal = 0;
+  let costo = 0;
+  for (const a of actuales) {
+    const deseada = deseadaPorId.get(a.id);
+    if (!deseada) continue;
+    subtotal += deseada.precio * deseada.cantidad - Number(a.descuento ?? 0);
+    costo += Number(a.costo_unit ?? 0) * deseada.cantidad;
+  }
+  const total = subtotal - Number(venta.descuento ?? 0) + Number(venta.envio ?? 0);
+  const { error: errPed } = await supabase
+    .from("pedidos")
+    .update({ subtotal, total, costo, utilidad: total - costo })
+    .eq("id", ventaId);
+  if (errPed) return { ok: false, error: errPed.message };
+
+  // 4) Recalcula pagado/saldo/est_pago contra el nuevo total.
+  await supabase.rpc("recalcular_pago_pedido", { p_pedido: ventaId });
+
+  revalidatePath("/ventas");
+  revalidatePath(`/ventas/${ventaId}`);
+  revalidatePath("/prendas");
+  revalidatePath("/inventario");
   revalidatePath("/pagos");
   return { ok: true };
 }
