@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock, Trash2, Paperclip, Eye } from "lucide-react";
+import { Truck, Mail, MessageCircle, CheckCircle2, Plus, CalendarClock, Trash2, Paperclip, Eye, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -19,6 +19,7 @@ import {
   actualizarEntrega,
   actualizarOrigen,
   eliminarVenta,
+  editarItemsVenta,
 } from "../actions";
 import { subirComprobante, eliminarComprobante } from "../../pagos/actions";
 import { firmarComprobante } from "../../comprobante-actions";
@@ -69,6 +70,38 @@ export function VentaDetalle({
   const [canalUsuario, setCanalUsuario] = useState(venta.canal_usuario ?? "");
   const [direccion, setDireccion] = useState(venta.direccion_envio ?? "");
   const [ocupado, setOcupado] = useState(false);
+
+  // Edición de las prendas de la venta.
+  type LineaEdit = { id: string; nombre: string | null; talla: string | null; color: string | null; cantidad: number; precio: number };
+  const lineasIniciales = (): LineaEdit[] =>
+    items.map((i) => ({ id: i.id, nombre: i.nombre, talla: i.talla, color: i.color, cantidad: i.cantidad, precio: Number(i.precio) }));
+  const [editandoItems, setEditandoItems] = useState(false);
+  const [lineas, setLineas] = useState<LineaEdit[]>(lineasIniciales);
+
+  const previewSubtotal = lineas.reduce((s, l) => s + (Number(l.precio) || 0) * (Number(l.cantidad) || 0), 0);
+  const previewTotal = previewSubtotal - Number(venta.descuento ?? 0) + Number(venta.envio ?? 0);
+
+  function abrirEdicionItems() {
+    setLineas(lineasIniciales());
+    setEditandoItems(true);
+  }
+  function setCantidad(id: string, v: number) {
+    setLineas((prev) => prev.map((l) => (l.id === id ? { ...l, cantidad: Math.max(1, Math.floor(v || 1)) } : l)));
+  }
+  function setPrecioLinea(id: string, v: number) {
+    setLineas((prev) => prev.map((l) => (l.id === id ? { ...l, precio: Math.max(0, v || 0) } : l)));
+  }
+  function quitarLinea(id: string) {
+    setLineas((prev) => prev.filter((l) => l.id !== id));
+  }
+  async function guardarItems() {
+    if (lineas.length === 0) { toast("La venta debe tener al menos una prenda.", "error"); return; }
+    setOcupado(true);
+    const res = await editarItemsVenta(venta.id, lineas.map((l) => ({ id: l.id, cantidad: l.cantidad, precio: l.precio })));
+    setOcupado(false);
+    if (res.ok) { setEditandoItems(false); toast("Prendas actualizadas", "exito"); router.refresh(); }
+    else toast(res.error ?? "Error", "error");
+  }
 
   const colorEstado = estados.find((e) => e.nombre === estado)?.hex ?? undefined;
   const enviado = estado === "Enviado" || !!venta.guia;
@@ -303,21 +336,75 @@ export function VentaDetalle({
 
       {/* Prendas */}
       <div className="gy-card overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-3">
+          <span className="text-sm font-semibold">Prendas</span>
+          {puedeEscribir && !editandoItems && (
+            <button className="gy-btn gy-btn-plano !px-2 !py-1 text-sm" onClick={abrirEdicionItems}>
+              <Pencil size={14} /> Editar prendas
+            </button>
+          )}
+        </div>
         <div className="gy-table-wrap">
           <table className="gy-table">
-            <thead><tr><th>Prenda</th><th>Cant.</th><th>Precio</th><th>Total</th></tr></thead>
+            <thead><tr><th>Prenda</th><th>Cant.</th><th>Precio</th><th>Total</th>{editandoItems && <th></th>}</tr></thead>
             <tbody>
-              {items.map((it) => (
-                <tr key={it.id}>
-                  <td>{it.nombre}<span className="ml-1 text-xs" style={{ color: "var(--tenue)" }}>{[it.talla, it.color].filter(Boolean).join(" · ")}</span></td>
-                  <td className="num">{it.cantidad}</td>
-                  <td className="num">{pesos(it.precio)}</td>
-                  <td className="num">{pesos(it.total)}</td>
-                </tr>
-              ))}
+              {!editandoItems
+                ? items.map((it) => (
+                    <tr key={it.id}>
+                      <td>{it.nombre}<span className="ml-1 text-xs" style={{ color: "var(--tenue)" }}>{[it.talla, it.color].filter(Boolean).join(" · ")}</span></td>
+                      <td className="num">{it.cantidad}</td>
+                      <td className="num">{pesos(it.precio)}</td>
+                      <td className="num">{pesos(it.total)}</td>
+                    </tr>
+                  ))
+                : lineas.map((l) => (
+                    <tr key={l.id}>
+                      <td>{l.nombre}<span className="ml-1 text-xs" style={{ color: "var(--tenue)" }}>{[l.talla, l.color].filter(Boolean).join(" · ")}</span></td>
+                      <td>
+                        <input
+                          type="number" min="1" value={l.cantidad}
+                          onChange={(e) => setCantidad(l.id, Number(e.target.value))}
+                          className="w-16 rounded-lg border bg-[var(--color-tarjeta)] px-2 py-1 text-right text-sm outline-none"
+                          style={inputStyle}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number" min="0" step="1000" value={l.precio}
+                          onChange={(e) => setPrecioLinea(l.id, Number(e.target.value))}
+                          className="w-28 rounded-lg border bg-[var(--color-tarjeta)] px-2 py-1 text-right text-sm outline-none"
+                          style={inputStyle}
+                        />
+                      </td>
+                      <td className="num">{pesos(l.precio * l.cantidad)}</td>
+                      <td>
+                        <button
+                          onClick={() => quitarLinea(l.id)}
+                          disabled={lineas.length <= 1}
+                          aria-label="Quitar prenda"
+                          title={lineas.length <= 1 ? "La venta debe tener al menos una prenda" : "Quitar prenda"}
+                          style={{ color: lineas.length <= 1 ? "var(--tenue)" : "#D33A2C" }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
             </tbody>
           </table>
         </div>
+        {editandoItems && (
+          <div className="flex flex-col gap-2 border-t px-4 py-3" style={{ borderColor: "var(--borde-suave)" }}>
+            <p className="text-xs" style={{ color: "var(--tenue)" }}>
+              Al guardar se ajusta el stock (devuelve o descuenta la diferencia) y se recalculan el total y el saldo.
+              Nuevo total aprox.: <b style={{ color: "var(--color-texto)" }}>{pesos(previewTotal)}</b>
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variante="plano" onClick={() => setEditandoItems(false)} disabled={ocupado}><X size={16} /> Cancelar</Button>
+              <Button onClick={guardarItems} disabled={ocupado}>{ocupado ? "Guardando…" : "Guardar cambios"}</Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Totales y pagos */}
